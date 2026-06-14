@@ -1,8 +1,8 @@
-# 🗂️ 展示板管理器 | Dashboard Manager
+# 🗂️ 多功能展示板 | Multi Functional Dashboard Manager
 
-一个功能强大的单文件 HTML 展示板应用，无需任何依赖，下载即用。
+一个功能强大的单文件 HTML 多功能展示板应用，无需任何依赖，下载即用。
 
-A powerful single-file HTML dashboard application with zero dependencies — download and use instantly.
+A powerful single-file HTML multi functional dashboard application with zero dependencies — download and use instantly.
 
 ---
 
