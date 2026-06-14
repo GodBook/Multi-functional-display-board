@@ -1,0 +1,3341 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>展示板管理器</title>
+<style>
+/* ===== CSS Variables ===== */
+:root {
+  --bg: #f0f2f5;
+  --surface: #ffffff;
+  --border: #e2e8f0;
+  --text: #1a202c;
+  --text-muted: #718096;
+  --accent: #4f6ef7;
+  --accent-hover: #3b5de7;
+  --accent-light: #eef1ff;
+  --danger: #ef4444;
+  --danger-hover: #dc2626;
+  --danger-light: #fef2f2;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+  --shadow-md: 0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.06);
+  --shadow-lg: 0 10px 25px rgba(0,0,0,0.12), 0 4px 10px rgba(0,0,0,0.08);
+  --shadow-xl: 0 20px 40px rgba(0,0,0,0.18);
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 14px;
+  --transition: 180ms cubic-bezier(0.4, 0, 0.2, 1);
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans SC", sans-serif;
+  --header-h: 56px;
+  --tab-h: 40px;
+}
+
+/* ===== Reset ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ===== App Shell ===== */
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+}
+
+/* ===== Top Header ===== */
+.header {
+  height: var(--header-h);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  gap: 16px;
+  z-index: 100;
+  flex-shrink: 0;
+}
+
+.header-logo {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: -0.3px;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-logo svg { width: 24px; height: 24px; }
+
+.header-divider {
+  width: 1px;
+  height: 24px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
+/* ===== Tab Bar ===== */
+.tab-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  min-width: 0;
+  height: var(--header-h);
+  padding: 8px 0;
+}
+
+.tab-bar::-webkit-scrollbar { display: none; }
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--transition);
+  position: relative;
+  flex-shrink: 0;
+  background: transparent;
+  border: 1px solid transparent;
+}
+
+.tab:hover {
+  background: #f7fafc;
+  color: var(--text);
+  border-color: var(--border);
+}
+
+.tab.active {
+  background: var(--accent-light);
+  color: var(--accent);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+.tab-close {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--transition);
+  border: none;
+  background: transparent;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.tab-close:hover {
+  background: var(--danger-light);
+  color: var(--danger);
+}
+
+.tab-add {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--transition);
+  border: 1px dashed var(--border);
+  background: transparent;
+  flex-shrink: 0;
+  font-weight: 300;
+}
+
+.tab-add:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-light);
+}
+
+/* ===== Header Actions ===== */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition);
+  border: 1px solid transparent;
+  font-family: var(--font);
+  white-space: nowrap;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.btn-primary:hover { background: var(--accent-hover); }
+
+.btn-secondary {
+  background: var(--surface);
+  color: var(--text);
+  border-color: var(--border);
+}
+
+.btn-secondary:hover { background: #f7fafc; }
+
+/* ===== Main Canvas ===== */
+.main {
+  flex: 1;
+  position: relative;
+  overflow: auto;
+  background:
+    radial-gradient(circle, #e2e8f0 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.canvas {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-width: 800px;
+  min-height: 600px;
+}
+
+/* ===== Block ===== */
+.block {
+  position: absolute;
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: box-shadow var(--transition);
+  z-index: 1;
+  border: 1px solid var(--border);
+}
+
+.block:hover { box-shadow: var(--shadow-lg); }
+
+.block.dragging {
+  box-shadow: var(--shadow-xl);
+  z-index: 1000;
+  opacity: 0.92;
+  transition: box-shadow var(--transition);
+  cursor: grabbing;
+}
+
+.block.resizing {
+  z-index: 1000;
+  opacity: 0.92;
+  transition: none;
+}
+
+.block.drag-over {
+  box-shadow: 0 0 0 3px var(--accent), var(--shadow-lg);
+  border-color: var(--accent);
+}
+
+.block.collapsed { height: auto !important; }
+
+.block-header {
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  height: 38px;
+  background: #fafbfc;
+  border-bottom: 1px solid var(--border);
+  cursor: grab;
+  flex-shrink: 0;
+  gap: 8px;
+  user-select: none;
+}
+
+.block-header:active { cursor: grabbing; }
+
+.block-type-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.block-type-icon.image { background: #dbeafe; color: #2563eb; }
+.block-type-icon.pdf { background: #fee2e2; color: #dc2626; }
+.block-type-icon.text { background: #d1fae5; color: #059669; }
+
+.block-title {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.block-title-input {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  padding: 2px 6px;
+  outline: none;
+  font-family: var(--font);
+  min-width: 0;
+  background: var(--surface);
+}
+
+.block-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity var(--transition);
+}
+
+.block:hover .block-actions,
+.block.dragging .block-actions { opacity: 1; }
+
+.block-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  transition: all var(--transition);
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.block-btn:hover { background: #f1f5f9; color: var(--text); }
+
+.block-btn.danger:hover { background: var(--danger-light); color: var(--danger); }
+
+.block-body {
+  flex: 1;
+  overflow: auto;
+  position: relative;
+  min-height: 0;
+}
+
+.block.collapsed .block-body { display: none; }
+
+/* ===== Content Types ===== */
+.block-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  background: #f8fafc;
+}
+
+.block-pdf {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+}
+
+.block-text {
+  padding: 14px;
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text);
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow: auto;
+  height: 100%;
+}
+
+.block-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 10px;
+  color: var(--text-muted);
+  padding: 20px;
+}
+
+.block-empty-icon {
+  font-size: 36px;
+  opacity: 0.4;
+}
+
+.block-empty-text {
+  font-size: 13px;
+  text-align: center;
+  line-height: 1.5;
+}
+
+/* ===== Resize Handles ===== */
+.resize-handle {
+  position: absolute;
+  z-index: 10;
+}
+
+.resize-handle.nw { top: -5px; left: -5px; width: 14px; height: 14px; cursor: nw-resize; }
+.resize-handle.n  { top: -5px; left: 10px; right: 10px; height: 10px; cursor: n-resize; }
+.resize-handle.ne { top: -5px; right: -5px; width: 14px; height: 14px; cursor: ne-resize; }
+.resize-handle.e  { top: 10px; right: -5px; bottom: 10px; width: 10px; cursor: e-resize; }
+.resize-handle.se { bottom: -5px; right: -5px; width: 14px; height: 14px; cursor: se-resize; }
+.resize-handle.s  { bottom: -5px; left: 10px; right: 10px; height: 10px; cursor: s-resize; }
+.resize-handle.sw { bottom: -5px; left: -5px; width: 14px; height: 14px; cursor: sw-resize; }
+.resize-handle.w  { top: 10px; left: -5px; bottom: 10px; width: 10px; cursor: w-resize; }
+
+/* ===== Context Menu ===== */
+.context-menu {
+  position: fixed;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  padding: 4px;
+  z-index: 10000;
+  min-width: 160px;
+  animation: menu-in 120ms ease-out;
+}
+
+@keyframes menu-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background var(--transition);
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  color: var(--text);
+  font-family: var(--font);
+}
+
+.context-menu-item:hover { background: #f1f5f9; }
+
+.context-menu-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 8px;
+}
+
+.context-menu-item input[type="color"] {
+  -webkit-appearance: none;
+  border: 2px solid var(--border);
+  border-radius: 4px;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  cursor: pointer;
+  background: none;
+  flex-shrink: 0;
+}
+.context-menu-item input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+.context-menu-item input[type="color"]::-webkit-color-swatch { border: none; border-radius: 3px; }
+
+/* ===== Font Popup ===== */
+.font-popup {
+  position: fixed;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  padding: 12px;
+  z-index: 10001;
+  min-width: 220px;
+  animation: menu-in 120ms ease-out;
+}
+
+.font-popup h4 {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.font-popup select,
+.font-popup input {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-family: var(--font);
+  outline: none;
+  margin-bottom: 8px;
+}
+
+.font-popup select:focus,
+.font-popup input:focus { border-color: var(--accent); }
+
+.font-popup .font-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+/* ===== Tab Color Dot ===== */
+.tab-color-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ===== Keyboard footer ===== */
+
+/* ===== Toast ===== */
+.toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 10001;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 8px;
+}
+
+.toast {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  box-shadow: var(--shadow-lg);
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  animation: toast-in 200ms ease-out;
+  max-width: 360px;
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.toast.success { border-left: 3px solid #10b981; }
+.toast.error { border-left: 3px solid var(--danger); }
+
+/* ===== Empty State ===== */
+.empty-state {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  pointer-events: none;
+}
+
+.empty-state-icon {
+  font-size: 56px;
+  opacity: 0.3;
+}
+
+.empty-state-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.empty-state-desc {
+  font-size: 13px;
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+.empty-state-desc kbd {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 11px;
+  font-family: var(--font);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ===== Floating Action Button ===== */
+.fab {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 99;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  font-size: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(79,110,247,0.4);
+  transition: all var(--transition);
+  line-height: 1;
+}
+
+.fab:hover {
+  transform: translateX(-50%) scale(1.08);
+  box-shadow: 0 6px 20px rgba(79,110,247,0.5);
+}
+
+.fab:active { transform: translateX(-50%) scale(0.96); }
+
+/* ===== Responsive ===== */
+@media (max-width: 768px) {
+  .header { padding: 0 12px; gap: 10px; }
+  .header-logo span { display: none; }
+  .btn span { display: none; }
+  .btn { padding: 7px 10px; }
+  .tab { padding: 6px 10px; font-size: 12px; }
+  .canvas { min-width: 100%; min-height: 400px; }
+  .block { min-width: 200px !important; min-height: 120px !important; }
+}
+
+@media (max-width: 480px) {
+  .fab { bottom: 16px; width: 42px; height: 42px; font-size: 22px; }
+  .toast-container { bottom: 12px; right: 12px; left: 12px; }
+  .toast { max-width: none; }
+}
+
+/* ===== Dark Mode ===== */
+html[data-theme="dark"] {
+  --bg: #1a1a2e;
+  --surface: #16213e;
+  --border: #2a3a5c;
+  --text: #e2e8f0;
+  --text-muted: #8899b4;
+  --accent: #6c8cff;
+  --accent-hover: #8aa4ff;
+  --accent-light: rgba(108,140,255,0.15);
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+  --shadow: 0 1px 3px rgba(0,0,0,0.4);
+  --shadow-md: 0 4px 6px rgba(0,0,0,0.5);
+  --shadow-lg: 0 10px 25px rgba(0,0,0,0.6);
+  --shadow-xl: 0 20px 40px rgba(0,0,0,0.7);
+}
+html[data-theme="dark"] .block-header { background: #1e2d4d; }
+html[data-theme="dark"] .block-body { background: #16213e; }
+html[data-theme="dark"] .block-text { background: #16213e; }
+html[data-theme="dark"] .tab:hover { background: rgba(108,140,255,0.1); }
+html[data-theme="dark"] .context-menu { border-color: #2a3a5c; }
+html[data-theme="dark"] .context-menu-item:hover { background: rgba(108,140,255,0.12); }
+html[data-theme="dark"] .font-popup { border-color: #2a3a5c; }
+html[data-theme="dark"] .main {
+  background-image: radial-gradient(circle, #2a3a5c 1px, transparent 1px);
+}
+html[data-theme="dark"] .block-image { background: #0f1928; }
+html[data-theme="dark"] textarea { background: #1e2d4d !important; color: var(--text); }
+html[data-theme="dark"] .font-popup select,
+html[data-theme="dark"] .font-popup input { background: #1e2d4d; color: var(--text); border-color: #2a3a5c; }
+
+/* ===== Block Selection ===== */
+.block.selected {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  z-index: 5;
+}
+.block.multi-selecting { outline: 2px dashed var(--accent); outline-offset: 2px; }
+
+/* ===== Locked Block ===== */
+.block.locked .block-header { cursor: default; }
+.block.locked .resize-handle { display: none !important; }
+
+/* ===== Mini Map ===== */
+.minimap {
+  position: fixed;
+  bottom: 28px;
+  right: 24px;
+  width: 160px;
+  height: 110px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  z-index: 98;
+  overflow: hidden;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity var(--transition), transform var(--transition);
+}
+.minimap:hover { opacity: 1; transform: scale(1.2); }
+.minimap canvas { width: 100%; height: 100%; display: block; }
+
+/* ===== Markdown Styles ===== */
+.block-md { padding: 14px; overflow: auto; height: 100%; line-height: 1.7; }
+.block-md h1 { font-size: 1.6em; font-weight: 700; margin: 0.4em 0 0.3em; border-bottom: 2px solid var(--border); padding-bottom: 0.2em; }
+.block-md h2 { font-size: 1.35em; font-weight: 700; margin: 0.4em 0 0.3em; }
+.block-md h3 { font-size: 1.15em; font-weight: 700; margin: 0.35em 0 0.25em; }
+.block-md p { margin: 0.3em 0; }
+.block-md ul, .block-md ol { padding-left: 1.8em; margin: 0.3em 0; }
+.block-md li { margin: 0.15em 0; }
+.block-md code { background: var(--accent-light); padding: 1px 5px; border-radius: 3px; font-family: 'Cascadia Code', Consolas, monospace; font-size: 0.9em; }
+.block-md pre { background: var(--accent-light); padding: 10px 14px; border-radius: var(--radius-sm); overflow-x: auto; margin: 0.4em 0; }
+.block-md pre code { background: none; padding: 0; }
+.block-md blockquote { border-left: 3px solid var(--accent); padding-left: 12px; color: var(--text-muted); margin: 0.4em 0; }
+.block-md a { color: var(--accent); }
+.block-md hr { border: none; border-top: 1px solid var(--border); margin: 0.6em 0; }
+.block-md strong { font-weight: 700; }
+.block-md em { font-style: italic; }
+
+/* ===== Embed ===== */
+.block-embed { width: 100%; height: 100%; border: none; display: block; }
+
+/* ===== Quick Action Bar ===== */
+.quick-bar {
+  position: fixed;
+  top: 68px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  padding: 4px 8px;
+  z-index: 99;
+  display: none;
+  gap: 2px;
+  animation: menu-in 120ms ease-out;
+}
+.quick-bar.visible { display: flex; }
+.quick-bar button {
+  display: flex; align-items: center; gap: 4px;
+  padding: 6px 10px; border-radius: var(--radius-sm);
+  font-size: 12px; cursor: pointer; border: none;
+  background: transparent; color: var(--text);
+  font-family: var(--font); white-space: nowrap;
+}
+.quick-bar button:hover { background: var(--accent-light); color: var(--accent); }
+.quick-bar .quick-divider { width: 1px; background: var(--border); margin: 2px 4px; }
+
+/* ===== Connection Lines ===== */
+.connections-svg {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  pointer-events: none; z-index: 0;
+}
+.connections-svg line {
+  stroke: var(--accent); stroke-width: 2;
+  marker-end: url(#arrowhead);
+}
+.connections-svg line.selected { stroke: #f59e0b; stroke-width: 3; }
+
+/* ===== Groups ===== */
+.group-box {
+  position: absolute;
+  border: 2px dashed var(--accent);
+  border-radius: var(--radius-lg);
+  background: var(--accent-light);
+  z-index: -1;
+  transition: all var(--transition);
+}
+.group-box:hover { border-color: #f59e0b; }
+.group-label {
+  position: absolute; top: -14px; left: 16px;
+  background: var(--accent); color: #fff;
+  font-size: 11px; font-weight: 600; padding: 2px 10px;
+  border-radius: 10px; white-space: nowrap;
+  cursor: pointer; z-index: 2; user-select: none;
+}
+.group-label:hover { opacity: 0.85; }
+.group-add-btn {
+  position: absolute; right: 8px; top: 2px;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--surface); border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; cursor: pointer; z-index: 2; color: var(--text);
+}
+.group-add-btn:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* ===== Grid Mode ===== */
+.canvas.grid-mode {
+  background-image:
+    linear-gradient(rgba(128,128,128,0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(128,128,128,0.08) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* ===== Search Bar ===== */
+.search-bar {
+  position: fixed; top: 64px; left: 50%; transform: translateX(-50%);
+  z-index: 200; display: none; gap: 6px;
+}
+.search-bar.visible { display: flex; }
+.search-bar input {
+  width: 320px; padding: 8px 14px; border: 2px solid var(--accent);
+  border-radius: 20px; font-size: 14px; outline: none;
+  font-family: var(--font); background: var(--surface); color: var(--text);
+  box-shadow: var(--shadow-lg);
+}
+.search-bar .search-count {
+  font-size: 12px; color: var(--text-muted); align-self: center; white-space: nowrap;
+}
+
+/* ===== Presentation Mode ===== */
+body.presenting .app > * { display: none !important; }
+body.presenting .presentation-overlay { display: flex !important; }
+.presentation-overlay {
+  display: none; position: fixed; inset: 0; z-index: 9999;
+  background: #000; color: #fff; flex-direction: column;
+  align-items: center; justify-content: center; font-family: var(--font);
+}
+.presentation-overlay .slide-content {
+  max-width: 85vw; max-height: 70vh; font-size: 1.4rem;
+  text-align: center; line-height: 1.6; overflow: auto;
+  animation: fadeUp 0.4s ease;
+}
+@keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+.presentation-overlay .slide-nav {
+  position: absolute; bottom: 30px; display: flex; gap: 12px;
+  font-size: 13px; color: #888;
+}
+.presentation-overlay .slide-nav button {
+  background: rgba(255,255,255,0.1); border: none; color: #fff;
+  padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 14px;
+}
+.presentation-overlay .slide-nav button:hover { background: rgba(255,255,255,0.2); }
+
+/* ===== Data Table ===== */
+.block-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.block-table th { background: var(--accent-light); color: var(--accent); font-weight: 600; padding: 6px 10px; text-align: left; border-bottom: 2px solid var(--accent); cursor: pointer; position: sticky; top: 0; }
+.block-table td { padding: 5px 10px; border-bottom: 1px solid var(--border); }
+.block-table tr:hover td { background: var(--accent-light); }
+
+/* ===== Drawing Canvas ===== */
+.draw-canvas {
+  position: absolute; inset: 0;
+  cursor: crosshair; z-index: 0;
+}
+.drawing-tools {
+  position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 6px 10px;
+  display: none; gap: 6px; z-index: 99; box-shadow: var(--shadow-md);
+}
+.drawing-tools.visible { display: flex; }
+.drawing-tools button {
+  padding: 6px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--surface); cursor: pointer; font-size: 14px; font-family: var(--font);
+  color: var(--text);
+}
+.drawing-tools button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* ===== Tag System ===== */
+.tag-bar {
+  display: flex; gap: 4px; padding: 4px 0;
+  flex-wrap: wrap; max-height: 36px; overflow: hidden;
+}
+.tag {
+  padding: 2px 8px; border-radius: 10px; font-size: 11px;
+  background: var(--accent-light); color: var(--accent);
+  cursor: pointer; white-space: nowrap; transition: all var(--transition);
+}
+.tag:hover { opacity: 0.8; }
+.tag.active { background: var(--accent); color: #fff; }
+.tag-input {
+  border: none; outline: none; font-size: 11px; padding: 2px 6px;
+  border-radius: 10px; background: var(--border); color: var(--text);
+  font-family: var(--font); width: 80px;
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- Search Bar -->
+  <div class="search-bar" id="searchBar">
+    <input type="text" id="searchInput" placeholder="🔍 搜索所有展示板..." oninput="Dashboard.doSearch()">
+    <span class="search-count" id="searchCount"></span>
+  </div>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="3" width="7" height="7" rx="1"/>
+        <rect x="14" y="3" width="7" height="7" rx="1"/>
+        <rect x="3" y="14" width="7" height="7" rx="1"/>
+        <rect x="14" y="14" width="7" height="7" rx="1"/>
+      </svg>
+      <span>展示板</span>
+    </div>
+    <div class="header-divider"></div>
+    <div class="tab-bar" id="tabBar"></div>
+    <button id="overlapToggle" class="btn btn-secondary" onclick="Dashboard.toggleOverlap()" title="切换方块是否允许重叠" style="flex-shrink:0;font-size:12px;padding:5px 10px;">
+    </button>
+    <div class="header-actions">
+      <button class="btn btn-secondary" id="darkToggle" onclick="Dashboard.toggleDark()" title="切换暗色模式">🌙</button>
+      <button class="btn btn-secondary" onclick="Dashboard.toggleGrid()" title="网格吸附">📐</button>
+      <button class="btn btn-secondary" onclick="Dashboard.toggleSearch()" title="搜索 (Ctrl+F)">🔍</button>
+      <button class="btn btn-secondary" onclick="Dashboard.startPresentation()" title="演示模式">🎬</button>
+      <button class="btn btn-secondary" onclick="Dashboard.createGroup()" title="从选中方块创建分组">📁</button>
+      <button class="btn btn-secondary" onclick="Storage.pickFolder()" title="选择文件夹存储数据">💾</button>
+      <button class="btn btn-secondary" onclick="Dashboard.exportDashboard()" title="导出展示板">📤</button>
+      <button class="btn btn-secondary" onclick="Dashboard.importDashboard()" title="导入展示板">📥</button>
+      <button class="btn btn-secondary" onclick="Dashboard.clearBlocks()" title="清空当前展示板所有方块">
+        <span>清空</span>
+      </button>
+      <div style="position:relative;">
+        <button class="btn btn-primary" id="addBlockBtn" onclick="Dashboard.toggleAddMenu(event)">
+          <span>+ 添加方块</span>
+          <span style="font-size:10px;margin-left:2px;">▾</span>
+        </button>
+        <div class="context-menu" id="addBlockMenu" style="display:none;position:absolute;top:100%;right:0;margin-top:4px;">
+          <button class="context-menu-item" data-action="add-text">📝 文本方块</button>
+          <button class="context-menu-item" data-action="add-image">🖼️ 图片方块</button>
+          <button class="context-menu-item" data-action="add-pdf">📄 PDF 方块</button>
+          <button class="context-menu-item" data-action="add-embed">🌐 网页嵌入</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tag Bar -->
+  <div style="padding:4px 20px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;" id="tagBarContainer">
+    <div class="tag-bar" id="tagBar"></div>
+  </div>
+
+  <!-- Main Canvas -->
+  <div class="main" id="main"
+       ondragover="event.preventDefault()"
+       ondrop="Dashboard.handleCanvasDrop(event)">
+    <div class="canvas" id="canvas">
+      <svg class="connections-svg" id="connectionsSvg">
+        <defs>
+          <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="var(--accent)" />
+          </marker>
+        </defs>
+      </svg>
+    </div>
+  </div>
+
+  <!-- FAB -->
+  <button class="fab" onclick="Dashboard.addBlock('text')" title="快速添加文本方块 (Ctrl+N)">+</button>
+
+  <!-- Quick Action Bar (for multi-select) -->
+  <div class="quick-bar" id="quickBar">
+    <button onclick="Dashboard.alignSelected('left')">⬅ 左对齐</button>
+    <button onclick="Dashboard.alignSelected('right')">➡ 右对齐</button>
+    <button onclick="Dashboard.alignSelected('top')">⬆ 顶对齐</button>
+    <button onclick="Dashboard.alignSelected('bottom')">⬇ 底对齐</button>
+    <span class="quick-divider"></span>
+    <button onclick="Dashboard.lockSelected()">🔒 锁定</button>
+    <button onclick="Dashboard.unlockSelected()">🔓 解锁</button>
+    <span class="quick-divider"></span>
+    <button onclick="Dashboard.deleteSelected()" style="color:var(--danger)">🗑 删除</button>
+    <button onclick="Dashboard.clearSelection()">✕</button>
+  </div>
+
+  <!-- Mini Map -->
+  <div class="minimap" id="minimap" title="迷你地图" onclick="Dashboard.minimapClick(event)">
+    <canvas id="minimapCanvas"></canvas>
+  </div>
+
+  <!-- Drawing Tools -->
+  <div class="drawing-tools" id="drawingTools">
+    <button onclick="Dashboard.setDrawColor('#000000')" style="background:#000;width:24px;height:24px;border-radius:50%;padding:0;"></button>
+    <button onclick="Dashboard.setDrawColor('#ef4444')" style="background:#ef4444;width:24px;height:24px;border-radius:50%;padding:0;"></button>
+    <button onclick="Dashboard.setDrawColor('#3b82f6')" style="background:#3b82f6;width:24px;height:24px;border-radius:50%;padding:0;"></button>
+    <button onclick="Dashboard.setDrawColor('#10b981')" style="background:#10b981;width:24px;height:24px;border-radius:50%;padding:0;"></button>
+    <span class="quick-divider"></span>
+    <button onclick="Dashboard.setDrawSize(2)">细</button>
+    <button onclick="Dashboard.setDrawSize(4)" class="active">中</button>
+    <button onclick="Dashboard.setDrawSize(8)">粗</button>
+    <span class="quick-divider"></span>
+    <button onclick="Dashboard.clearDrawing()">清除</button>
+    <button onclick="Dashboard.toggleDrawing()">✕</button>
+  </div>
+
+  <!-- Presentation Overlay -->
+  <div class="presentation-overlay" id="presentationOverlay">
+    <div class="slide-content" id="slideContent"></div>
+    <div class="slide-nav">
+      <button onclick="Dashboard.prevSlide()">◀ 上一个</button>
+      <span id="slideCounter">1 / 1</span>
+      <button onclick="Dashboard.nextSlide()">下一个 ▶</button>
+      <span style="margin-left:12px;">|</span>
+      <button onclick="Dashboard.stopPresentation()">✕ 退出</button>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toastContainer"></div>
+</div>
+
+<script>
+// ============================================================
+// Dashboard Application
+// ============================================================
+
+const LS_KEY = 'dashboard_app_state';
+const MIN_W = 240, MIN_H = 160;
+
+// ---- Helpers ----
+function $(sel, ctx) { return (ctx || document).querySelector(sel); }
+function $$(sel, ctx) { return [...(ctx || document).querySelectorAll(sel)]; }
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+function uid() { return 'b' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+// ---- Collision Detection ----
+function blocksOverlap(a, b) {
+  return (
+    a.x < b.x + b.w &&
+    a.x + a.w > b.x &&
+    a.y < b.y + b.h &&
+    a.y + a.h > b.y
+  );
+}
+
+function findNonOverlappingPosition(block, allBlocks, canvasRect) {
+  const others = allBlocks.filter(b => b.id !== block.id && !b.collapsed);
+  if (!others.some(o => blocksOverlap(block, o))) return { x: block.x, y: block.y };
+
+  // Try nudging in 4 directions, pick the one with least displacement
+  const candidates = [];
+  const step = 20; // nudge step in pixels
+
+  // Right
+  let nx = block.x, ny = block.y;
+  for (let i = 0; i < 50; i++) {
+    nx += step;
+    if (!others.some(o => blocksOverlap({ x: nx, y: ny, w: block.w, h: block.h }, o))) {
+      candidates.push({ x: nx, y: ny, dist: Math.abs(nx - block.x) });
+      break;
+    }
+  }
+  // Down
+  nx = block.x; ny = block.y;
+  for (let i = 0; i < 50; i++) {
+    ny += step;
+    if (!others.some(o => blocksOverlap({ x: nx, y: ny, w: block.w, h: block.h }, o))) {
+      candidates.push({ x: nx, y: ny, dist: Math.abs(ny - block.y) });
+      break;
+    }
+  }
+  // Left
+  nx = block.x; ny = block.y;
+  for (let i = 0; i < 50; i++) {
+    nx -= step;
+    if (nx < 0) break;
+    if (!others.some(o => blocksOverlap({ x: nx, y: ny, w: block.w, h: block.h }, o))) {
+      candidates.push({ x: nx, y: ny, dist: Math.abs(nx - block.x) });
+      break;
+    }
+  }
+  // Up
+  nx = block.x; ny = block.y;
+  for (let i = 0; i < 50; i++) {
+    ny -= step;
+    if (ny < 0) break;
+    if (!others.some(o => blocksOverlap({ x: nx, y: ny, w: block.w, h: block.h }, o))) {
+      candidates.push({ x: nx, y: ny, dist: Math.abs(ny - block.y) });
+      break;
+    }
+  }
+
+  if (candidates.length === 0) return { x: block.x, y: block.y };
+  candidates.sort((a, b) => a.dist - b.dist);
+  return { x: Math.max(0, candidates[0].x), y: Math.max(0, candidates[0].y) };
+}
+
+// ---- Undo / Redo ----
+const UndoRedo = {
+  stack: [],
+  pos: -1,
+  maxSize: 50,
+
+  push() {
+    // Remove future states
+    this.stack = this.stack.slice(0, this.pos + 1);
+    this.stack.push(JSON.stringify({ dashboards: State.dashboards, activeIdx: State.activeIdx }));
+    if (this.stack.length > this.maxSize) this.stack.shift();
+    this.pos = this.stack.length - 1;
+  },
+
+  undo() {
+    if (this.pos <= 0) return false;
+    this.pos--;
+    this._restore();
+    return true;
+  },
+
+  redo() {
+    if (this.pos >= this.stack.length - 1) return false;
+    this.pos++;
+    this._restore();
+    return true;
+  },
+
+  _restore() {
+    const data = JSON.parse(this.stack[this.pos]);
+    State.dashboards = data.dashboards;
+    State.activeIdx = data.activeIdx;
+    Render.all();
+    State.save();
+  }
+};
+
+// ---- Markdown Parser (lightweight) ----
+function parseMarkdown(text) {
+  let html = text
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  // Code blocks (```)
+  html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) =>
+    `<pre><code>${code.replace(/\n$/, '')}</code></pre>`);
+
+  // Inline code
+  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+  // Bold
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+
+  // Italic
+  html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+
+  // Headers
+  html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+  html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+  html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+
+  // Horizontal rule
+  html = html.replace(/^---$/gm, '<hr>');
+
+  // Links [text](url)
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+
+  // Images ![alt](url)
+  html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="max-width:100%;border-radius:4px;">');
+
+  // Unordered lists
+  html = html.replace(/^[\*\-] (.+)$/gm, '<li>$1</li>');
+  html = html.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
+
+  // Ordered lists
+  html = html.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+
+  // Blockquote
+  html = html.replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>');
+
+  // Paragraphs (double newlines)
+  const lines = html.split('\n');
+  let result = [];
+  let inList = false, inBlock = false;
+  for (let line of lines) {
+    if (line.startsWith('<ul>')) { inList = true; result.push(line); continue; }
+    if (line.startsWith('</ul>')) { inList = false; result.push(line); continue; }
+    if (line.startsWith('<blockquote>')) { inBlock = true; result.push(line); continue; }
+    if (line.startsWith('</blockquote>')) { inBlock = false; result.push(line); continue; }
+    if (inList || inBlock || line.startsWith('<h') || line.startsWith('<pre') ||
+        line.startsWith('<hr') || line.startsWith('<img') || line.startsWith('</pre') ||
+        line.startsWith('<li')) {
+      result.push(line);
+    } else if (line.trim() === '') {
+      result.push('');
+    } else {
+      result.push(`<p>${line}</p>`);
+    }
+  }
+  html = result.join('\n');
+
+  // Clean up empty <p>
+  html = html.replace(/<p>\s*<\/p>/g, '');
+
+  return html;
+}
+
+// ---- Multi-Selection State ----
+const Selection = {
+  ids: new Set(),
+  shiftHeld: false,
+
+  isSelected(id) { return this.ids.has(id); },
+  count() { return this.ids.size; },
+  clear() { this.ids.clear(); Render.blocks(); Selection.updateQuickBar(); },
+  toggle(id) {
+    if (this.ids.has(id)) this.ids.delete(id);
+    else this.ids.add(id);
+    Render.blocks();
+    this.updateQuickBar();
+  },
+  add(id) { this.ids.add(id); },
+  setSingle(id) {
+    if (this.ids.size === 1 && this.ids.has(id)) {
+      this.clear();
+    } else {
+      this.ids.clear();
+      this.ids.add(id);
+      Render.blocks();
+      this.updateQuickBar();
+    }
+  },
+  getBlocks() {
+    const db = State.active;
+    if (!db) return [];
+    return db.blocks.filter(b => this.ids.has(b.id));
+  },
+  updateQuickBar() {
+    const bar = $('#quickBar');
+    if (!bar) return;
+    if (this.ids.size >= 2) bar.classList.add('visible');
+    else bar.classList.remove('visible');
+  }
+};
+
+// ---- Alignment Snapping ----
+function snapToEdges(block, allBlocks, threshold = 8) {
+  let snapX = block.x, snapY = block.y;
+  const cx = block.x + block.w / 2, cy = block.y + block.h / 2;
+  const right = block.x + block.w, bottom = block.y + block.h;
+  const others = allBlocks.filter(b => b.id !== block.id && !b.collapsed);
+
+  for (const o of others) {
+    const oR = o.x + o.w, oB = o.y + o.h, oCX = o.x + o.w / 2, oCY = o.y + o.h / 2;
+
+    // Left edge to left edge
+    if (Math.abs(block.x - o.x) < threshold) snapX = o.x;
+    // Right edge to right edge
+    if (Math.abs(right - oR) < threshold) snapX = oR - block.w;
+    // Left to right
+    if (Math.abs(block.x - oR) < threshold) snapX = oR;
+    // Right to left
+    if (Math.abs(right - o.x) < threshold) snapX = o.x - block.w;
+    // Center to center (horizontal)
+    if (Math.abs(cx - oCX) < threshold) snapX = oCX - block.w / 2;
+
+    // Top to top
+    if (Math.abs(block.y - o.y) < threshold) snapY = o.y;
+    // Bottom to bottom
+    if (Math.abs(bottom - oB) < threshold) snapY = oB - block.h;
+    // Top to bottom
+    if (Math.abs(block.y - oB) < threshold) snapY = oB;
+    // Bottom to top
+    if (Math.abs(bottom - o.y) < threshold) snapY = o.y - block.h;
+    // Center to center (vertical)
+    if (Math.abs(cy - oCY) < threshold) snapY = oCY - block.h / 2;
+  }
+
+  return { x: snapX, y: snapY };
+}
+
+// ---- Toast ----
+const Toast = {
+  show(msg, type = 'success') {
+    const el = document.createElement('div');
+    el.className = `toast ${type}`;
+    el.textContent = msg;
+    $('#toastContainer').appendChild(el);
+    setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity 200ms'; setTimeout(() => el.remove(), 200); }, 2200);
+  }
+};
+
+// ---- Persistence (IndexedDB) ----
+const DB_NAME = 'DashboardDB';
+const DB_VERSION = 1;
+
+const Storage = {
+  _db: null,
+  _initPromise: null,
+  _dirHandle: null,
+  _fileName: 'dashboard-data.json',
+
+  _openDB() {
+    if (this._initPromise) return this._initPromise;
+    this._initPromise = new Promise((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME, DB_VERSION);
+      req.onupgradeneeded = (e) => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains('state')) {
+          db.createObjectStore('state', { keyPath: 'id' });
+        }
+        if (!db.objectStoreNames.contains('meta')) {
+          db.createObjectStore('meta', { keyPath: 'id' });
+        }
+      };
+      req.onsuccess = (e) => {
+        this._db = e.target.result;
+        this._restoreDirHandle().then(() => resolve(this._db));
+      };
+      req.onerror = () => {
+        console.warn('IndexedDB 不可用，回退到 localStorage');
+        this._db = null;
+        resolve(null);
+      };
+    });
+    return this._initPromise;
+  },
+
+  async _restoreDirHandle() {
+    if (!this._db) return;
+    try {
+      const tx = this._db.transaction('meta', 'readonly');
+      const store = tx.objectStore('meta');
+      const req = store.get('dirHandle');
+      await new Promise((resolve) => { req.onsuccess = () => {
+        if (req.result && req.result.handle) {
+          req.result.handle.queryPermission({ mode: 'readwrite' }).then(p => {
+            if (p === 'granted') this._dirHandle = req.result.handle;
+          }).catch(() => {});
+        }
+        resolve();
+      };});
+    } catch {}
+  },
+
+  async pickFolder() {
+    if (!window.showDirectoryPicker) {
+      Toast.show('当前浏览器不支持，已用浏览器内置存储', 'error');
+      return false;
+    }
+    try {
+      this._dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+      if (this._db) {
+        const tx = this._db.transaction('meta', 'readwrite');
+        tx.objectStore('meta').put({ id: 'dirHandle', handle: this._dirHandle });
+      }
+      Toast.show('已绑定文件夹，数据将同步到 dashboard-data.json');
+      this.save({ dashboards: State.dashboards, activeIdx: State.activeIdx });
+      return true;
+    } catch (e) {
+      if (e.name !== 'AbortError') Toast.show('文件夹选择失败', 'error');
+      return false;
+    }
+  },
+
+  async _saveToFile(json) {
+    if (!this._dirHandle) return;
+    try {
+      const fh = await this._dirHandle.getFileHandle(this._fileName, { create: true });
+      const w = await fh.createWritable();
+      await w.write(json);
+      await w.close();
+    } catch (e) { console.warn('文件写入失败:', e.message); }
+  },
+
+  async _loadFromFile() {
+    if (!this._dirHandle) return null;
+    try {
+      const fh = await this._dirHandle.getFileHandle(this._fileName);
+      const file = await fh.getFile();
+      const text = await file.text();
+      const data = JSON.parse(text);
+      if (!data.dashboards || !Array.isArray(data.dashboards)) return null;
+      return data;
+    } catch { return null; }
+  },
+
+  _openDB() {
+    if (this._initPromise) return this._initPromise;
+    this._initPromise = new Promise((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME, DB_VERSION);
+      req.onupgradeneeded = (e) => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains('state')) {
+          db.createObjectStore('state', { keyPath: 'id' });
+        }
+      };
+      req.onsuccess = (e) => {
+        this._db = e.target.result;
+        resolve(this._db);
+      };
+      req.onerror = () => {
+        console.warn('IndexedDB 不可用，回退到 localStorage');
+        this._db = null;
+        resolve(null);
+      };
+    });
+    return this._initPromise;
+  },
+
+  async load() {
+    const db = await this._openDB();
+    // If folder bound, try file first
+    if (this._dirHandle) {
+      const fd = await this._loadFromFile();
+      if (fd) return fd;
+    }
+    if (!db) return this._loadFromLS();
+
+    try {
+      return new Promise((resolve) => {
+        const tx = db.transaction('state', 'readonly');
+        const store = tx.objectStore('state');
+        const req = store.get('dashboard_state');
+        req.onsuccess = () => {
+          if (req.result) {
+            resolve(req.result.data);
+          } else {
+            // Try migrating from localStorage
+            const lsData = this._loadFromLS();
+            if (lsData) { this.save(lsData); }
+            resolve(lsData);
+          }
+        };
+        req.onerror = () => resolve(this._loadFromLS());
+      });
+    } catch {
+      return this._loadFromLS();
+    }
+  },
+
+  _loadFromLS() {
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      if (!raw) return null;
+      const data = JSON.parse(raw);
+      if (!data.dashboards || !Array.isArray(data.dashboards)) return null;
+      return data;
+    } catch { return null; }
+  },
+
+  save(state) {
+    this._doSave(state).catch(() => {});
+  },
+
+  async _doSave(state) {
+    const json = JSON.stringify(state);
+    // 1. Save to folder file (if bound)
+    if (this._dirHandle) await this._saveToFile(json);
+    // 2. Save to IndexedDB
+    const db = await this._openDB();
+    if (!db) {
+      // Fallback to localStorage
+      try {
+        const json = JSON.stringify(state);
+        localStorage.setItem(LS_KEY, json);
+      } catch (e) {
+        Toast.show('存储空间不足，请清理旧数据或导出备份', 'error');
+      }
+      return;
+    }
+
+    try {
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction('state', 'readwrite');
+        const store = tx.objectStore('state');
+        store.put({ id: 'dashboard_state', data: state, updated: Date.now() });
+        tx.oncomplete = resolve;
+        tx.onerror = reject;
+      });
+      // After successful IndexedDB save, clean up old localStorage
+      try { localStorage.removeItem(LS_KEY); } catch {}
+    } catch (e) {
+      // IndexedDB write failed - try localStorage fallback
+      console.warn('IndexedDB 写入失败，尝试 localStorage');
+      try {
+        localStorage.setItem(LS_KEY, JSON.stringify(state));
+      } catch (e2) {
+        Toast.show('存储空间不足，请导出备份并清理旧数据', 'error');
+      }
+    }
+  },
+
+  /** Returns estimated storage usage in KB */
+  async getUsage() {
+    try {
+      const json = JSON.stringify({ dashboards: State.dashboards, activeIdx: State.activeIdx });
+      return `${kb} KB (${location})`;
+    } catch { return '0 KB'; }
+  }
+};
+
+// ---- State ----
+const State = {
+  dashboards: [],
+  activeIdx: 0,
+
+  get active() { return this.dashboards[this.activeIdx]; },
+
+  async init(savedData) {
+    const saved = savedData || await Storage.load();
+    if (saved && saved.dashboards.length > 0) {
+      this.dashboards = saved.dashboards;
+      this.activeIdx = Math.min(saved.activeIdx || 0, this.dashboards.length - 1);
+      // Ensure legacy blocks have new fields
+      this.dashboards.forEach(db => {
+        if (!db.color) db.color = '#4f6ef7';
+        if (db.allowOverlap === undefined) db.allowOverlap = true;
+        if (db.theme === undefined) db.theme = 'light';
+        if (!db.connections) db.connections = [];
+        if (!db.tags) db.tags = [];
+        if (!db.activeTag) db.activeTag = '';
+        if (db.gridOn === undefined) db.gridOn = false;
+        if (!db.groups) db.groups = [];
+        db.blocks.forEach(b => {
+          if (!b.color) b.color = '';
+          if (!b.fontFamily) b.fontFamily = '';
+          if (!b.fontSize) b.fontSize = 14;
+          if (!b.z) b.z = 1;
+          if (b.locked === undefined) b.locked = false;
+          if (!b.borderRadius) b.borderRadius = '';
+          if (!b.shadow) b.shadow = '';
+          if (!b.mdMode) b.mdMode = false;
+          if (!b.tags) b.tags = [];
+        });
+      });
+    } else {
+      this.dashboards = [this._createDashboard('展示板 1', '#4f6ef7')];
+      this.activeIdx = 0;
+      const db = this.dashboards[0];
+      db.blocks = [
+        { id: uid(), type: 'image', title: '示例图片', x: 40, y: 40, w: 420, h: 320, collapsed: false, content: '', color: '', fontFamily: '', fontSize: 14, z: 1, locked: false, borderRadius: '', shadow: '', mdMode: false },
+        { id: uid(), type: 'text', title: '使用说明', x: 500, y: 40, w: 380, h: 320, collapsed: false, content: '# 展示板使用指南\n\n- **拖拽**标题栏可自由移动方块\n- 拖拽**边界**可调整大小\n- **右键**方块可更换内容类型、颜色、字体\n- 顶部**标签页**可创建多个展示板\n- **Shift+点击**可多选方块\n- 所有布局会**自动保存**到本地\n\n> 试试开启 Markdown 模式查看渲染效果！', color: '', fontFamily: '', fontSize: 14, z: 2, locked: false, borderRadius: '', shadow: '', mdMode: false },
+      ];
+    }
+  },
+
+  _createDashboard(name, color) {
+    return { id: uid(), name, color: color || '', blocks: [], allowOverlap: true };
+  },
+
+  addDashboard(name) {
+    this.dashboards.push(this._createDashboard(name || `展示板 ${this.dashboards.length + 1}`, ''));
+    this.activeIdx = this.dashboards.length - 1;
+    this.save();
+  },
+
+  removeDashboard(idx) {
+    if (this.dashboards.length <= 1) return;
+    this.dashboards.splice(idx, 1);
+    this.activeIdx = Math.min(this.activeIdx, this.dashboards.length - 1);
+    this.save();
+    Render.all();
+  },
+
+  switchTo(idx) {
+    this.activeIdx = idx;
+    this.save();
+    Render.all();
+  },
+
+  renameDashboard(idx, name) {
+    if (name.trim()) this.dashboards[idx].name = name.trim();
+    this.save();
+    Render.tabs();
+  },
+
+  addBlock() {
+    const db = this.active;
+    if (!db) return;
+    const nextZ = Math.max(0, ...db.blocks.map(b => b.z || 0)) + 1;
+    const block = {
+      id: uid(),
+      type: 'text',
+      title: `方块 ${db.blocks.length + 1}`,
+      x: 40 + (db.blocks.length % 4) * 30,
+      y: 40 + (db.blocks.length % 4) * 30,
+      w: 380,
+      h: 280,
+      collapsed: false,
+      content: '',
+      color: '',
+      fontFamily: '',
+      fontSize: 14,
+      z: nextZ,
+      locked: false,
+      borderRadius: '',
+      shadow: '',
+      mdMode: false
+    };
+    db.blocks.push(block);
+    this.save();
+    Render.blocks();
+    // Scroll canvas to show new block
+    setTimeout(() => {
+      const el = document.getElementById(block.id);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 50);
+  },
+
+  removeBlock(blockId) {
+    const db = this.active;
+    if (!db) return;
+    db.blocks = db.blocks.filter(b => b.id !== blockId);
+    this.save();
+    Render.blocks();
+  },
+
+  updateBlock(blockId, patch) {
+    const db = this.active;
+    if (!db) return;
+    const block = db.blocks.find(b => b.id === blockId);
+    if (!block) return;
+    Object.assign(block, patch);
+    this.save();
+  },
+
+  save() {
+    Storage.save({ dashboards: this.dashboards, activeIdx: this.activeIdx });
+  }
+};
+
+// ---- Drag & Drop ----
+const DragDrop = {
+  dragging: null,
+  startX: 0, startY: 0,
+  origX: 0, origY: 0,
+
+  start(e, blockId) {
+    if (e.button !== 0) return;
+    const block = State.active?.blocks.find(b => b.id === blockId);
+    if (!block) return;
+    e.preventDefault();
+    this.dragging = block;
+    this.startX = e.clientX;
+    this.startY = e.clientY;
+    this.origX = block.x;
+    this.origY = block.y;
+    const el = document.getElementById(block.id);
+    if (el) {
+      el.classList.add('dragging');
+      el.style.zIndex = '1000';
+    }
+    document.addEventListener('mousemove', this._move);
+    document.addEventListener('mouseup', this._end);
+  },
+
+  _move(e) {
+    if (!DragDrop.dragging) return;
+    const dx = e.clientX - DragDrop.startX;
+    const dy = e.clientY - DragDrop.startY;
+    const block = DragDrop.dragging;
+    const el = document.getElementById(block.id);
+    if (el) {
+      el.style.left = (DragDrop.origX + dx) + 'px';
+      el.style.top = (DragDrop.origY + dy) + 'px';
+    }
+  },
+
+  _end(e) {
+    if (!DragDrop.dragging) return;
+    document.removeEventListener('mousemove', DragDrop._move);
+    document.removeEventListener('mouseup', DragDrop._end);
+    const block = DragDrop.dragging;
+    const dx = e.clientX - DragDrop.startX;
+    const dy = e.clientY - DragDrop.startY;
+    block.x = DragDrop.origX + dx;
+    block.y = DragDrop.origY + dy;
+
+    // Alignment snapping
+    const db = State.active;
+    if (db && !block.collapsed) {
+      const snapped = snapToEdges(block, db.blocks);
+      block.x = snapped.x;
+      block.y = snapped.y;
+    }
+
+    // Anti-overlap enforcement
+    if (db && !db.allowOverlap && !block.collapsed) {
+      const pos = findNonOverlappingPosition(block, db.blocks);
+      block.x = pos.x;
+      block.y = pos.y;
+    }
+
+    const el = document.getElementById(block.id);
+    if (el) {
+      el.classList.remove('dragging');
+      el.style.zIndex = '';
+    }
+    // Re-render to snap position if anti-overlap moved it
+    if (db && !db.allowOverlap) {
+      Render.blocks();
+    }
+    UndoRedo.push();
+    State.save();
+    Dashboard.updateConnections();
+    DragDrop.dragging = null;
+  }
+};
+
+// ---- Resize ----
+const Resize = {
+  resizing: null,
+  handle: null,
+  startX: 0, startY: 0,
+  origX: 0, origY: 0, origW: 0, origH: 0,
+
+  start(e, blockId, handle) {
+    e.preventDefault();
+    e.stopPropagation();
+    const block = State.active?.blocks.find(b => b.id === blockId);
+    if (!block) return;
+    this.resizing = block;
+    this.handle = handle;
+    this.startX = e.clientX;
+    this.startY = e.clientY;
+    this.origX = block.x;
+    this.origY = block.y;
+    this.origW = block.w;
+    this.origH = block.h;
+    const el = document.getElementById(block.id);
+    if (el) el.classList.add('resizing');
+    document.addEventListener('mousemove', this._move);
+    document.addEventListener('mouseup', this._end);
+  },
+
+  _move(e) {
+    if (!Resize.resizing) return;
+    const block = Resize.resizing;
+    const h = Resize.handle;
+    let dx = e.clientX - Resize.startX;
+    let dy = e.clientY - Resize.startY;
+    let nx = Resize.origX, ny = Resize.origY, nw = Resize.origW, nh = Resize.origH;
+
+    if (h.includes('e')) nw = Math.max(MIN_W, Resize.origW + dx);
+    if (h.includes('w')) { nw = Math.max(MIN_W, Resize.origW - dx); nx = Resize.origX + dx; }
+    if (h.includes('s')) nh = Math.max(MIN_H, Resize.origH + dy);
+    if (h.includes('n')) { nh = Math.max(MIN_H, Resize.origH - dy); ny = Resize.origY + dy; }
+
+    // Clamp if only one direction changed
+    if (h === 'w' || h === 'e') { nx = h === 'w' ? Resize.origX + (Resize.origW - nw) : Resize.origX; }
+    if (h === 'n' || h === 's') { ny = h === 'n' ? Resize.origY + (Resize.origH - nh) : Resize.origY; }
+
+    const el = document.getElementById(block.id);
+    if (el) {
+      el.style.left = nx + 'px';
+      el.style.top = ny + 'px';
+      el.style.width = nw + 'px';
+      el.style.height = nh + 'px';
+    }
+  },
+
+  _end(e) {
+    if (!Resize.resizing) return;
+    document.removeEventListener('mousemove', Resize._move);
+    document.removeEventListener('mouseup', Resize._end);
+    const block = Resize.resizing;
+    const el = document.getElementById(block.id);
+    if (el) {
+      el.classList.remove('resizing');
+      block.x = parseInt(el.style.left);
+      block.y = parseInt(el.style.top);
+      block.w = parseInt(el.style.width);
+      block.h = parseInt(el.style.height);
+    }
+    State.save();
+    Resize.resizing = null;
+    Resize.handle = null;
+  }
+};
+
+// ---- Render ----
+const Render = {
+  all() {
+    this.tabs();
+    this.blocks();
+    this.emptyState();
+    Dashboard.updateOverlapButton();
+    Dashboard.updateMinimap();
+    Dashboard.updateTags();
+    Dashboard.updateConnections();
+    Dashboard.renderGroups();
+  },
+
+  tabs() {
+    const bar = $('#tabBar');
+    bar.innerHTML = State.dashboards.map((db, i) => `
+      <div class="tab${i === State.activeIdx ? ' active' : ''}"
+           data-idx="${i}"
+           onclick="Dashboard.switchDashboard(${i})"
+           ondblclick="Dashboard.startRename(${i})"
+           oncontextmenu="event.preventDefault(); Dashboard.showTabContextMenu(event, ${i})"
+           title="双击重命名 | 右键设置颜色"
+           style="${i === State.activeIdx && db.color ? 'border-color:' + db.color + ';background:' + Render._hexToRgba(db.color, 0.12) + ';color:' + db.color : ''}">
+        ${db.color ? `<span class="tab-color-dot" style="background:${db.color}"></span>` : ''}
+        ${db.name}
+        ${State.dashboards.length > 1 ? `<button class="tab-close" onclick="event.stopPropagation(); Dashboard.removeDashboard(${i})" title="关闭">×</button>` : ''}
+      </div>
+    `).join('') + `
+      <button class="tab-add" onclick="Dashboard.addDashboard()" title="新建展示板">+</button>
+    `;
+  },
+
+  blocks() {
+    const canvas = $('#canvas');
+    const db = State.active;
+    if (!db) { canvas.innerHTML = ''; return; }
+
+    // Preserve existing DOM elements that are being dragged/resized
+    const existingEls = new Map();
+    canvas.querySelectorAll('.block').forEach(el => {
+      if (el.classList.contains('dragging') || el.classList.contains('resizing')) {
+        existingEls.set(el.id, el);
+      }
+    });
+
+    canvas.innerHTML = db.blocks.map(block => {
+      // If this block is being actively dragged/resized, skip (its DOM is preserved)
+      if (existingEls.has(block.id)) return '';
+      return Render._blockHTML(block);
+    }).join('');
+
+    // Re-attach preserved elements
+    existingEls.forEach((el, id) => {
+      if (!canvas.querySelector(`#${id}`)) canvas.appendChild(el);
+    });
+    Dashboard.updateMinimap();
+  },
+
+  _blockHTML(block) {
+    const typeIcons = { image: '🖼️', pdf: '📄', text: '📝', embed: '🌐', table: '📊' };
+    const typeLabels = { image: '图片', pdf: 'PDF', text: '文本', embed: '网页', table: '表格' };
+    const typeCSS = { image: 'image', pdf: 'pdf', text: 'text', embed: 'text', table: 'text' };
+
+    const headerBg = block.color || '';
+    const headerStyle = headerBg ? `background:${headerBg};border-bottom-color:${headerBg};` : '';
+    const titleColor = headerBg ? 'color:#fff' : '';
+    const fontStyle = (block.fontFamily ? `font-family:${Render._escAttr(block.fontFamily)};` : '') + (block.fontSize ? `font-size:${block.fontSize}px;` : '');
+
+    let bodyHTML = '';
+    if (block.collapsed) {
+      bodyHTML = '';
+    } else if (block.type === 'image' && block.content) {
+      bodyHTML = `<img class="block-image" src="${Render._escAttr(block.content)}" alt="${Render._esc(block.title)}" draggable="false">`;
+    } else if (block.type === 'pdf' && block.content) {
+      bodyHTML = `<iframe class="block-pdf" src="${Render._escAttr(block.content)}" title="${Render._esc(block.title)}"></iframe>`;
+    } else if (block.type === 'embed' && block.content) {
+      bodyHTML = `<iframe class="block-embed" src="${Render._escAttr(block.content)}" title="${Render._esc(block.title)}" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>`;
+    } else if (block.type === 'text' && block.content) {
+      const content = block.mdMode ? parseMarkdown(block.content) : `<div style="${fontStyle}">${Render._esc(block.content)}</div>`;
+      const cls = block.mdMode ? 'block-md' : 'block-text';
+      bodyHTML = `<div class="${cls}" style="${block.mdMode ? fontStyle : ''}">${content}</div>`;
+    } else if (block.type === 'table' && block.content) {
+      try {
+        const data = JSON.parse(block.content);
+        bodyHTML = `<div style="overflow:auto;height:100%;"><table class="block-table"><thead><tr>${data.headers.map(h => `<th onclick="Dashboard.sortTable(event,'${h}')">${h}</th>`).join('')}</tr></thead><tbody>${data.rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+      } catch { bodyHTML = '<div class="block-empty"><div class="block-empty-icon">📊</div><div class="block-empty-text">表格数据格式错误</div></div>'; }
+    } else {
+      bodyHTML = `
+        <div class="block-empty">
+          <div class="block-empty-icon">${typeIcons[block.type] || '📦'}</div>
+          <div class="block-empty-text">右键点击标题栏导入${typeLabels[block.type] || ''}内容<br>或拖拽文件到此处</div>
+        </div>`;
+    }
+
+    const z = block.z || 1;
+    const selected = Selection.isSelected(block.id) ? ' selected' : '';
+    const locked = block.locked ? ' locked' : '';
+    const borderRadius = block.borderRadius || '';
+    const shadow = block.shadow || '';
+    const extraStyle = [
+      borderRadius ? `border-radius:${borderRadius}` : '',
+      shadow ? `box-shadow:${shadow}` : ''
+    ].filter(Boolean).join(';');
+
+    return `
+      <div class="block${block.collapsed ? ' collapsed' : ''}${selected}${locked}"
+           id="${block.id}"
+           style="left:${block.x}px; top:${block.y}px; width:${block.w}px; height:${block.h}px;z-index:${z};${headerBg ? 'border-color:' + headerBg + ';' : ''}${extraStyle ? ';' + extraStyle : ''}"
+           data-id="${block.id}"
+           onclick="event.stopPropagation(); Dashboard.handleBlockClick(event, '${block.id}')"
+           oncontextmenu="event.preventDefault(); Dashboard.showContextMenu(event, '${block.id}')"
+           ondragover="event.preventDefault(); event.currentTarget.classList.add('drag-over')"
+           ondragleave="event.currentTarget.classList.remove('drag-over')"
+           ondrop="event.currentTarget.classList.remove('drag-over'); Dashboard.handleDrop(event, '${block.id}')">
+        <div class="block-header" style="${headerStyle}" onmousedown="${block.locked ? '' : `Dashboard.startDrag(event, '${block.id}')`}" ondblclick="Dashboard.renameBlock('${block.id}')">
+          <div class="block-type-icon ${typeCSS[block.type]}">${typeIcons[block.type]}</div>
+          ${block.locked ? '<span style="font-size:11px;margin-right:2px;opacity:0.6;">🔒</span>' : ''}
+          <span class="block-title" style="${titleColor}">${Render._esc(block.title)}</span>
+          <div class="block-actions">
+            <button class="block-btn" style="${titleColor}" title="${block.collapsed ? '展开' : '折叠'}" onclick="event.stopPropagation(); Dashboard.toggleBlock('${block.id}')">
+              ${block.collapsed ? '▸' : '▾'}
+            </button>
+            <button class="block-btn danger" style="${titleColor}" title="删除" onclick="event.stopPropagation(); Dashboard.removeBlock('${block.id}')">×</button>
+          </div>
+        </div>
+        <div class="block-body">${bodyHTML}</div>
+        ${block.collapsed ? '' : `
+        <div class="resize-handle nw" onmousedown="Dashboard.startResize(event, '${block.id}', 'nw')"></div>
+        <div class="resize-handle n" onmousedown="Dashboard.startResize(event, '${block.id}', 'n')"></div>
+        <div class="resize-handle ne" onmousedown="Dashboard.startResize(event, '${block.id}', 'ne')"></div>
+        <div class="resize-handle e" onmousedown="Dashboard.startResize(event, '${block.id}', 'e')"></div>
+        <div class="resize-handle se" onmousedown="Dashboard.startResize(event, '${block.id}', 'se')"></div>
+        <div class="resize-handle s" onmousedown="Dashboard.startResize(event, '${block.id}', 's')"></div>
+        <div class="resize-handle sw" onmousedown="Dashboard.startResize(event, '${block.id}', 'sw')"></div>
+        <div class="resize-handle w" onmousedown="Dashboard.startResize(event, '${block.id}', 'w')"></div>
+        `}
+      </div>`;
+  },
+
+  emptyState() {
+    const canvas = $('#canvas');
+    const db = State.active;
+    // Remove existing empty state
+    const existing = canvas.querySelector('.empty-state');
+    if (existing) existing.remove();
+
+    if (db && db.blocks.length === 0) {
+      const div = document.createElement('div');
+      div.className = 'empty-state';
+      div.innerHTML = `
+        <div class="empty-state-icon">📋</div>
+        <div class="empty-state-title">空白展示板</div>
+        <div class="empty-state-desc">点击下方 <kbd>+</kbd> 按钮或按 <kbd>Ctrl+N</kbd> 添加内容方块</div>
+      `;
+      canvas.appendChild(div);
+    }
+  },
+
+  singleBlock(block) {
+    const db = State.active;
+    if (!db) return;
+    const canvas = $('#canvas');
+    const existing = document.getElementById(block.id);
+    const newHTML = Render._blockHTML(block);
+    if (existing && !existing.classList.contains('dragging') && !existing.classList.contains('resizing')) {
+      const temp = document.createElement('div');
+      temp.innerHTML = newHTML;
+      const newEl = temp.firstElementChild;
+      existing.replaceWith(newEl);
+    }
+    this.emptyState();
+  },
+
+  _esc(s) {
+    const div = document.createElement('div');
+    div.textContent = s;
+    return div.innerHTML;
+  },
+
+  _escAttr(s) {
+    return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  },
+
+  _hexToRgba(hex, alpha) {
+    const r = parseInt(hex.slice(1,3), 16);
+    const g = parseInt(hex.slice(3,5), 16);
+    const b = parseInt(hex.slice(5,7), 16);
+    return `rgba(${r},${g},${b},${alpha})`;
+  }
+};
+
+// ---- Context Menu ----
+let currentContextMenu = null;
+
+function closeContextMenu() {
+  if (currentContextMenu) { currentContextMenu.remove(); currentContextMenu = null; }
+}
+
+function closeFontPopup() {
+  const popup = document.getElementById('fontPopup');
+  if (popup) popup.remove();
+}
+
+// ---- File Input (singleton) ----
+let fileInput = null;
+function getFileInput(accept, callback) {
+  if (fileInput) fileInput.remove();
+  fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.accept = accept;
+  fileInput.style.display = 'none';
+  fileInput.onchange = () => {
+    if (fileInput.files && fileInput.files[0]) {
+      callback(fileInput.files[0]);
+    }
+    fileInput.remove();
+    fileInput = null;
+  };
+  document.body.appendChild(fileInput);
+  fileInput.click();
+}
+
+// ---- Dashboard Controller ----
+const Dashboard = {
+  // Add menu toggle
+  toggleAddMenu(e) {
+    e.stopPropagation();
+    const menu = $('#addBlockMenu');
+    if (menu.style.display === 'none') {
+      menu.style.display = 'block';
+      // Setup one-time click-to-close
+      const closer = (ev) => {
+        if (!menu.contains(ev.target) && ev.target !== $('#addBlockBtn')) {
+          menu.style.display = 'none';
+          document.removeEventListener('click', closer);
+        }
+      };
+      setTimeout(() => document.addEventListener('click', closer), 0);
+
+      // Handle menu clicks
+      menu.onclick = (ev) => {
+        const action = ev.target.closest('[data-action]')?.dataset.action;
+        if (!action) return;
+        menu.style.display = 'none';
+        if (action === 'add-text') Dashboard.addBlock('text');
+        else if (action === 'add-image') Dashboard.addBlock('image');
+        else if (action === 'add-pdf') Dashboard.addBlock('pdf');
+        else if (action === 'add-embed') Dashboard.addBlock('embed');
+      };
+    } else {
+      menu.style.display = 'none';
+    }
+  },
+
+  // Overlap toggle
+  toggleOverlap() {
+    const db = State.active;
+    if (!db) return;
+    db.allowOverlap = !db.allowOverlap;
+    State.save();
+    this.updateOverlapButton();
+    // If overlap disabled, re-render to snap positions
+    if (!db.allowOverlap) {
+      db.blocks.forEach(block => {
+        if (!block.collapsed) {
+          const pos = findNonOverlappingPosition(block, db.blocks);
+          block.x = pos.x;
+          block.y = pos.y;
+        }
+      });
+      Render.blocks();
+    }
+  },
+
+  updateOverlapButton() {
+    const db = State.active;
+    const btn = $('#overlapToggle');
+    if (!btn) return;
+    if (db && db.allowOverlap) {
+      btn.innerHTML = '<span>⊞ 可重叠</span>';
+      btn.className = 'btn btn-secondary';
+    } else {
+      btn.innerHTML = '<span>⊟ 不重叠</span>';
+      btn.className = 'btn btn-secondary';
+      btn.style.background = '#fef3c7';
+      btn.style.borderColor = '#f59e0b';
+      btn.style.color = '#92400e';
+    }
+    if (!db) {
+      btn.style.background = '';
+      btn.style.borderColor = '';
+      btn.style.color = '';
+    }
+  },
+
+  // Tab management
+  addDashboard(name) {
+    State.addDashboard(name);
+    Render.all();
+  },
+
+  removeDashboard(idx) {
+    State.removeDashboard(idx);
+  },
+
+  switchDashboard(idx) {
+    State.switchTo(idx);
+  },
+
+  startRename(idx) {
+    closeContextMenu();
+    const tab = $(`.tab[data-idx="${idx}"]`, $('#tabBar'));
+    if (!tab) return;
+    const nameSpan = tab.childNodes[0];
+    const currentName = nameSpan ? nameSpan.textContent.trim() : State.dashboards[idx].name;
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = currentName;
+    input.style.cssText = 'font-size:13px;font-weight:500;border:1px solid var(--accent);border-radius:4px;padding:2px 6px;outline:none;width:120px;font-family:inherit;background:white;';
+    tab.innerHTML = '';
+    tab.appendChild(input);
+    input.focus();
+    input.select();
+
+    const finish = () => {
+      State.renameDashboard(idx, input.value);
+      Render.tabs();
+    };
+    input.addEventListener('blur', finish);
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') finish(); if (e.key === 'Escape') { input.value = currentName; finish(); } });
+  },
+
+  // Block CRUD
+  addBlock(type) {
+    const db = State.active;
+    if (!db) return;
+    const nextZ = Math.max(0, ...db.blocks.map(b => b.z || 0)) + 1;
+    const block = {
+      id: uid(),
+      type: type || 'text',
+      title: `方块 ${db.blocks.length + 1}`,
+      x: 40 + (db.blocks.length % 4) * 30,
+      y: 40 + (db.blocks.length % 4) * 30,
+      w: 400,
+      h: 320,
+      collapsed: false,
+      content: '',
+      color: '',
+      fontFamily: '',
+      fontSize: 14,
+      z: nextZ,
+      locked: false,
+      borderRadius: '',
+      shadow: '',
+      mdMode: false
+    };
+    db.blocks.push(block);
+    UndoRedo.push();
+    State.save();
+    Render.blocks();
+    Render.emptyState();
+
+    if (!type || type === 'text') {
+      setTimeout(() => Dashboard.editTextContent(block.id), 100);
+    } else if (type === 'image') {
+      getFileInput('image/*', (file) => Dashboard.importImage(block.id, file));
+    } else if (type === 'pdf') {
+      getFileInput('.pdf', (file) => Dashboard.importPDF(block.id, file));
+    } else if (type === 'embed') {
+      const url = prompt('请输入要嵌入的网页 URL：', 'https://');
+      if (url) {
+        State.updateBlock(block.id, { type: 'embed', content: url, title: url.replace(/^https?:\/\//, '').split('/')[0] });
+        Render.singleBlock(State.active.blocks.find(b => b.id === block.id));
+        Toast.show('网页已嵌入');
+      }
+    }
+  },
+
+  removeBlock(blockId) {
+    State.removeBlock(blockId);
+    UndoRedo.push();
+    Dashboard.updateMinimap();
+  },
+
+  clearBlocks() {
+    const db = State.active;
+    if (!db || db.blocks.length === 0) return;
+    if (!confirm(`确定要清空「${db.name}」中的所有 ${db.blocks.length} 个方块吗？此操作不可撤销。`)) return;
+    db.blocks = [];
+    UndoRedo.push();
+    State.save();
+    Render.blocks();
+    Render.emptyState();
+    Dashboard.updateMinimap();
+    Toast.show('展示板已清空');
+  },
+
+  toggleBlock(blockId) {
+    const block = State.active?.blocks.find(b => b.id === blockId);
+    if (!block) return;
+    block.collapsed = !block.collapsed;
+    UndoRedo.push();
+    State.save();
+    Render.singleBlock(block);
+  },
+
+  startDrag(e, blockId) {
+    // Don't start drag if clicking action buttons
+    if (e.target.closest('.block-btn')) return;
+    DragDrop.start(e, blockId);
+  },
+
+  startResize(e, blockId, handle) {
+    Resize.start(e, blockId, handle);
+  },
+
+  // Content import
+  importImage(blockId, file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      State.updateBlock(blockId, { type: 'image', content: reader.result });
+      Render.singleBlock(State.active.blocks.find(b => b.id === blockId));
+      Toast.show('图片已导入');
+    };
+    reader.readAsDataURL(file);
+  },
+
+  importPDF(blockId, file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      State.updateBlock(blockId, { type: 'pdf', content: reader.result });
+      Render.singleBlock(State.active.blocks.find(b => b.id === blockId));
+      Toast.show('PDF 已导入');
+    };
+    reader.readAsDataURL(file);
+  },
+
+  editTextContent(blockId) {
+    const block = State.active?.blocks.find(b => b.id === blockId);
+    if (!block) return;
+    const el = document.getElementById(blockId);
+    if (!el) return;
+    const body = el.querySelector('.block-body');
+    if (!body) return;
+
+    const existingTextarea = body.querySelector('textarea');
+    if (existingTextarea) {
+      existingTextarea.focus();
+      return;
+    }
+
+    const currentContent = body.querySelector('.block-text')?.textContent || block.content || '';
+    body.innerHTML = `
+      <textarea style="width:100%;height:100%;border:none;resize:none;padding:14px;font-size:${block.fontSize || 14}px;line-height:1.7;font-family:${Dashboard._escHTML(block.fontFamily) || 'var(--font)'};outline:none;background:#fafbfc;display:block;"
+                placeholder="输入文本内容...">${Dashboard._escHTML(currentContent)}</textarea>`;
+
+    const textarea = body.querySelector('textarea');
+    textarea.focus();
+
+    // Auto-save on input with debounce
+    let saveTimer;
+    textarea.addEventListener('input', () => {
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => {
+        State.updateBlock(blockId, { type: 'text', content: textarea.value });
+        State.save();
+      }, 600);
+    });
+
+    // Save on blur
+    textarea.addEventListener('blur', () => {
+      clearTimeout(saveTimer);
+      State.updateBlock(blockId, { type: 'text', content: textarea.value });
+      State.save();
+      Render.singleBlock(State.active.blocks.find(b => b.id === blockId));
+    });
+
+    // Ctrl+Enter to finish editing
+    textarea.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && e.ctrlKey) {
+        textarea.blur();
+      }
+    });
+  },
+
+  _escHTML(s) {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  },
+
+  renameBlock(blockId) {
+    const block = State.active?.blocks.find(b => b.id === blockId);
+    if (!block) return;
+    const el = document.getElementById(blockId);
+    if (!el) return;
+    const titleEl = el.querySelector('.block-title');
+    if (!titleEl) return;
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'block-title-input';
+    input.value = block.title;
+    titleEl.replaceWith(input);
+    input.focus();
+    input.select();
+
+    const finish = () => {
+      const newTitle = input.value.trim() || block.title;
+      State.updateBlock(blockId, { title: newTitle });
+      Render.singleBlock(State.active.blocks.find(b => b.id === blockId));
+    };
+    input.addEventListener('blur', finish);
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') finish();
+      if (e.key === 'Escape') { input.value = block.title; finish(); }
+    });
+  },
+
+  // Context menu
+  showContextMenu(e, blockId) {
+    closeContextMenu();
+    closeFontPopup();
+    const block = State.active?.blocks.find(b => b.id === blockId);
+    if (!block) return;
+
+    // If we're in connect mode, complete the connection
+    if (this._connectFrom && this._connectFrom !== blockId) {
+      const fromId = this._connectFrom;
+      this._connectFrom = null;
+      this.addConnection(fromId, blockId);
+      return;
+    }
+    this._connectFrom = null;
+
+    const menu = document.createElement('div');
+    menu.className = 'context-menu';
+    menu.innerHTML = `
+      <button class="context-menu-item" data-action="import-image">🖼️ 导入图片</button>
+      <button class="context-menu-item" data-action="import-pdf">📄 导入 PDF</button>
+      <button class="context-menu-item" data-action="edit-text">📝 编辑文本</button>
+      <button class="context-menu-item" data-action="import-embed">🌐 嵌入网页</button>
+      <div class="context-menu-divider"></div>
+      <button class="context-menu-item" data-action="copy-block">📋 复制方块</button>
+      <button class="context-menu-item" data-action="rename">✏️ 重命名</button>
+      <button class="context-menu-item" data-action="toggle">${block.collapsed ? '📖 展开' : '📕 折叠'}</button>
+      ${block.type === 'text' ? `<button class="context-menu-item" data-action="toggle-md">${block.mdMode ? '📝 纯文本模式' : '📋 Markdown 模式'}</button>` : ''}
+      <div class="context-menu-divider"></div>
+      <button class="context-menu-item" data-action="block-color">
+        🎨 方块颜色 <input type="color" value="${block.color || '#4f6ef7'}" onmousedown="event.stopPropagation()" onclick="event.stopPropagation()"/>
+      </button>
+      <button class="context-menu-item" data-action="block-radius">
+        🔲 圆角 <input type="range" min="0" max="30" value="${parseInt(block.borderRadius) || 0}" style="width:60px;margin-left:4px;" onmousedown="event.stopPropagation()" onclick="event.stopPropagation()"/>
+      </button>
+      ${block.type === 'text' ? `
+      <button class="context-menu-item" data-action="block-font">
+        🔤 字体设置
+      </button>` : ''}
+      <div class="context-menu-divider"></div>
+      <button class="context-menu-item" data-action="lock">${block.locked ? '🔓 解锁方块' : '🔒 锁定方块'}</button>
+      <button class="context-menu-item" data-action="bring-front">⬆️ 置于顶层</button>
+      <button class="context-menu-item" data-action="send-back">⬇️ 置于底层</button>
+      <div class="context-menu-divider"></div>
+      <button class="context-menu-item" data-action="delete" style="color:var(--danger)">🗑️ 删除方块</button>
+      <div class="context-menu-divider"></div>
+      <button class="context-menu-item" data-action="connect">🔗 连接到此方块</button>
+      <button class="context-menu-item" data-action="add-tag">🏷️ 添加标签</button>
+      <button class="context-menu-item" data-action="table-import">📊 导入 CSV 表格</button>
+    `;
+
+    // Bind color input change
+    const colorInput = menu.querySelector('input[type="color"]');
+    if (colorInput) {
+      colorInput.addEventListener('input', (ev) => {
+        ev.stopPropagation();
+        State.updateBlock(blockId, { color: colorInput.value });
+        Render.singleBlock(State.active.blocks.find(b => b.id === blockId));
+      });
+    }
+    // Bind radius slider
+    const radiusSlider = menu.querySelector('input[type="range"]');
+    if (radiusSlider) {
+      radiusSlider.addEventListener('input', (ev) => {
+        ev.stopPropagation();
+        const val = parseInt(radiusSlider.value);
+        State.updateBlock(blockId, { borderRadius: val ? val + 'px' : '' });
+        Render.singleBlock(State.active.blocks.find(b => b.id === blockId));
+      });
+    }
+
+    // Append before measuring for accurate viewport bounds
+    document.body.appendChild(menu);
+    const rect = menu.getBoundingClientRect();
+
+    // Position and keep within viewport
+    let x = e.clientX;
+    let y = e.clientY;
+    if (x + rect.width > window.innerWidth) x = window.innerWidth - rect.width - 8;
+    if (y + rect.height > window.innerHeight) y = window.innerHeight - rect.height - 8;
+    if (x < 4) x = 4;
+    if (y < 4) y = 4;
+    menu.style.left = x + 'px';
+    menu.style.top = y + 'px';
+
+    menu.addEventListener('click', (ev) => {
+      const action = ev.target.closest('[data-action]')?.dataset.action;
+      if (!action) return;
+      // Don't close menu for color input
+      if (action === 'block-color' || action === 'block-radius') return;
+      closeContextMenu();
+
+      switch (action) {
+        case 'import-image':
+          getFileInput('image/*', (file) => Dashboard.importImage(blockId, file));
+          break;
+        case 'import-pdf':
+          getFileInput('.pdf', (file) => Dashboard.importPDF(blockId, file));
+          break;
+        case 'edit-text':
+          State.updateBlock(blockId, { type: 'text' });
+          Render.singleBlock(State.active.blocks.find(b => b.id === blockId));
+          setTimeout(() => Dashboard.editTextContent(blockId), 150);
+          break;
+        case 'rename':
+          Dashboard.renameBlock(blockId);
+          break;
+        case 'toggle':
+          Dashboard.toggleBlock(blockId);
+          break;
+        case 'toggle-md':
+          State.updateBlock(blockId, { mdMode: !block.mdMode });
+          Render.singleBlock(State.active.blocks.find(b => b.id === blockId));
+          UndoRedo.push();
+          Toast.show(block.mdMode ? '已切换为 Markdown 模式' : '已切换为纯文本模式');
+          break;
+        case 'copy-block':
+          Dashboard.copyBlock(blockId);
+          break;
+        case 'lock':
+          const wasLocked = block.locked;
+          State.updateBlock(blockId, { locked: !wasLocked });
+          State.save();
+          UndoRedo.push();
+          Render.singleBlock(State.active.blocks.find(b => b.id === blockId));
+          Toast.show(wasLocked ? '方块已解锁' : '方块已锁定');
+          break;
+        case 'import-embed':
+          const embedUrl = prompt('请输入要嵌入的网页 URL：', 'https://');
+          if (embedUrl) {
+            State.updateBlock(blockId, { type: 'embed', content: embedUrl });
+            Render.singleBlock(State.active.blocks.find(b => b.id === blockId));
+            UndoRedo.push();
+            Toast.show('网页已嵌入');
+          }
+          break;
+        case 'bring-front':
+          Dashboard.bringToFront(blockId);
+          Toast.show('已置于顶层');
+          break;
+        case 'send-back':
+          Dashboard.sendToBack(blockId);
+          Toast.show('已置于底层');
+          break;
+        case 'block-font':
+          Dashboard.showFontPopup(e, blockId);
+          break;
+        case 'delete':
+          Dashboard.removeBlock(blockId);
+          Toast.show('方块已删除');
+          break;
+        case 'connect':
+          closeContextMenu();
+          Dashboard._connectFrom = blockId;
+          Toast.show('请右键点击目标方块完成连接');
+          break;
+        case 'add-tag':
+          closeContextMenu();
+          const tagName = prompt('输入标签名称：');
+          if (tagName) {
+            if (!block.tags) block.tags = [];
+            if (!block.tags.includes(tagName)) block.tags.push(tagName);
+            State.save();
+            Dashboard.updateTags();
+            Toast.show(`已添加标签: ${tagName}`);
+          }
+          break;
+        case 'table-import':
+          getFileInput('.csv,.tsv,.txt', (file) => Dashboard.importTable(blockId, file));
+          break;
+      }
+    });
+
+    currentContextMenu = menu;
+  },
+
+  // Tab context menu (for dashboard color)
+  showTabContextMenu(e, idx) {
+    closeContextMenu();
+    closeFontPopup();
+    const db = State.dashboards[idx];
+    if (!db) return;
+
+    const menu = document.createElement('div');
+    menu.className = 'context-menu';
+    menu.innerHTML = `
+      <button class="context-menu-item" data-action="tab-color">
+        🎨 展示板颜色 <input type="color" value="${db.color || '#4f6ef7'}" onmousedown="event.stopPropagation()" onclick="event.stopPropagation()"/>
+      </button>
+      <div class="context-menu-divider"></div>
+      <button class="context-menu-item" data-action="tab-rename">✏️ 重命名</button>
+      <button class="context-menu-item" data-action="tab-overlap">${db.allowOverlap ? '⊟ 禁止重叠' : '⊞ 允许重叠'}</button>
+      ${State.dashboards.length > 1 ? `<div class="context-menu-divider"></div><button class="context-menu-item" data-action="tab-close" style="color:var(--danger)">🗑️ 关闭展示板</button>` : ''}
+    `;
+
+    const colorInput = menu.querySelector('input[type="color"]');
+    if (colorInput) {
+      colorInput.addEventListener('input', (ev) => {
+        ev.stopPropagation();
+        db.color = colorInput.value;
+        State.save();
+        Render.tabs();
+      });
+    }
+
+    document.body.appendChild(menu);
+    const rect = menu.getBoundingClientRect();
+    let x = e.clientX;
+    let y = e.clientY;
+    if (x + rect.width > window.innerWidth) x = window.innerWidth - rect.width - 8;
+    if (y + rect.height > window.innerHeight) y = window.innerHeight - rect.height - 8;
+    if (x < 4) x = 4;
+    if (y < 4) y = 4;
+    menu.style.left = x + 'px';
+    menu.style.top = y + 'px';
+
+    menu.addEventListener('click', (ev) => {
+      const action = ev.target.closest('[data-action]')?.dataset.action;
+      if (!action) return;
+      if (action === 'tab-color') return;
+      closeContextMenu();
+      if (action === 'tab-rename') Dashboard.startRename(idx);
+      if (action === 'tab-overlap') Dashboard.toggleOverlap();
+      if (action === 'tab-close') Dashboard.removeDashboard(idx);
+    });
+
+    currentContextMenu = menu;
+  },
+
+  // Font popup
+  showFontPopup(e, blockId) {
+    closeFontPopup();
+    const block = State.active?.blocks.find(b => b.id === blockId);
+    if (!block) return;
+
+    const popup = document.createElement('div');
+    popup.className = 'font-popup';
+    popup.id = 'fontPopup';
+
+    const fonts = [
+      { label: '默认', value: '' },
+      { label: '宋体 / Serif', value: "Georgia, 'Times New Roman', '宋体', SimSun, serif" },
+      { label: '黑体 / Sans', value: "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', '黑体', SimHei, sans-serif" },
+      { label: '楷体 / KaiTi', value: "'楷体', KaiTi, 'STKaiti', serif" },
+      { label: '仿宋 / FangSong', value: "'仿宋', FangSong, 'STFangsong', serif" },
+      { label: '等宽 / Mono', value: "'Cascadia Code', 'Fira Code', 'SF Mono', 'Source Code Pro', Consolas, 'Courier New', monospace" },
+    ];
+
+    popup.innerHTML = `
+      <h4>字体设置</h4>
+      <label style="font-size:12px;color:var(--text-muted)">字体</label>
+      <select id="fontFamilySelect">
+        ${fonts.map(f => `<option value="${Render._escAttr(f.value)}" ${block.fontFamily === f.value ? 'selected' : ''}>${f.label}</option>`).join('')}
+      </select>
+      <label style="font-size:12px;color:var(--text-muted)">字号</label>
+      <input type="number" id="fontSizeInput" value="${block.fontSize || 14}" min="10" max="48" step="1">
+      <div class="font-actions">
+        <button class="btn btn-secondary" onclick="closeFontPopup()" style="font-size:12px;padding:4px 10px;">取消</button>
+        <button class="btn btn-primary" id="fontApplyBtn" style="font-size:12px;padding:4px 10px;">应用</button>
+      </div>
+    `;
+
+    document.body.appendChild(popup);
+
+    // Position popup
+    const popupRect = popup.getBoundingClientRect();
+    let px = e.clientX;
+    let py = e.clientY;
+    if (px + popupRect.width > window.innerWidth) px = window.innerWidth - popupRect.width - 8;
+    if (py + popupRect.height > window.innerHeight) py = window.innerHeight - popupRect.height - 8;
+    popup.style.left = px + 'px';
+    popup.style.top = py + 'px';
+
+    const applyBtn = popup.querySelector('#fontApplyBtn');
+    applyBtn.onclick = () => {
+      const family = popup.querySelector('#fontFamilySelect').value;
+      const size = parseInt(popup.querySelector('#fontSizeInput').value) || 14;
+      State.updateBlock(blockId, { fontFamily: family, fontSize: size });
+      State.save();
+      Render.singleBlock(State.active.blocks.find(b => b.id === blockId));
+      closeFontPopup();
+      Toast.show('字体设置已应用');
+    };
+  },
+
+  // Z-index management
+  bringToFront(blockId) {
+    const db = State.active;
+    if (!db) return;
+    const maxZ = Math.max(0, ...db.blocks.map(b => b.z || 0));
+    State.updateBlock(blockId, { z: maxZ + 1 });
+    UndoRedo.push();
+    const el = document.getElementById(blockId);
+    if (el) el.style.zIndex = maxZ + 1;
+  },
+
+  sendToBack(blockId) {
+    const db = State.active;
+    if (!db) return;
+    const minZ = Math.min(...db.blocks.map(b => b.z || 1));
+    const newZ = Math.max(1, minZ - 1);
+    State.updateBlock(blockId, { z: newZ });
+    UndoRedo.push();
+    const el = document.getElementById(blockId);
+    if (el) el.style.zIndex = newZ;
+  },
+
+  // Block click (for selection)
+  handleBlockClick(e, blockId) {
+    const block = State.active?.blocks.find(b => b.id === blockId);
+    if (!block || block.locked) return;
+    // Click on text block body → enter edit mode
+    if (block.type === 'text' && e.target.closest('.block-body') && !e.target.closest('.block-header')) {
+      Dashboard.editTextContent(blockId);
+      return;
+    }
+    if (e.shiftKey) {
+      Selection.toggle(blockId);
+    } else {
+      Selection.setSingle(blockId);
+    }
+  },
+
+  // Copy block
+  copyBlock(blockId) {
+    const db = State.active;
+    if (!db) return;
+    const src = db.blocks.find(b => b.id === blockId);
+    if (!src) return;
+    const nextZ = Math.max(0, ...db.blocks.map(b => b.z || 0)) + 1;
+    const copy = { ...src, id: uid(), x: src.x + 30, y: src.y + 30, z: nextZ, title: src.title + ' (副本)' };
+    db.blocks.push(copy);
+    UndoRedo.push();
+    State.save();
+    Render.blocks();
+    Toast.show('方块已复制');
+  },
+
+  // Multi-select operations
+  alignSelected(dir) {
+    const sel = Selection.getBlocks();
+    if (sel.length < 2) return;
+    UndoRedo.push();
+    if (dir === 'left') { const minX = Math.min(...sel.map(b => b.x)); sel.forEach(b => { b.x = minX; }); }
+    if (dir === 'right') { const maxR = Math.max(...sel.map(b => b.x + b.w)); sel.forEach(b => { b.x = maxR - b.w; }); }
+    if (dir === 'top') { const minY = Math.min(...sel.map(b => b.y)); sel.forEach(b => { b.y = minY; }); }
+    if (dir === 'bottom') { const maxB = Math.max(...sel.map(b => b.y + b.h)); sel.forEach(b => { b.y = maxB - b.h; }); }
+    State.save();
+    Render.blocks();
+    Selection.updateQuickBar();
+    Toast.show('已对齐');
+  },
+
+  lockSelected() {
+    const sel = Selection.getBlocks();
+    sel.forEach(b => { b.locked = true; });
+    State.save();
+    UndoRedo.push();
+    Render.blocks();
+    Selection.clear();
+    Toast.show(`${sel.length} 个方块已锁定`);
+  },
+
+  unlockSelected() {
+    const sel = Selection.getBlocks();
+    sel.forEach(b => { b.locked = false; });
+    State.save();
+    UndoRedo.push();
+    Render.blocks();
+    Toast.show(`${sel.length} 个方块已解锁`);
+  },
+
+  deleteSelected() {
+    const sel = Selection.getBlocks();
+    if (sel.length === 0) return;
+    if (!confirm(`确定删除选中的 ${sel.length} 个方块？`)) return;
+    const db = State.active;
+    if (!db) return;
+    const ids = new Set(sel.map(b => b.id));
+    db.blocks = db.blocks.filter(b => !ids.has(b.id));
+    UndoRedo.push();
+    State.save();
+    Selection.clear();
+    Render.blocks();
+    Render.emptyState();
+    Dashboard.updateMinimap();
+    Toast.show(`已删除 ${sel.length} 个方块`);
+  },
+
+  clearSelection() {
+    Selection.clear();
+  },
+
+  // Dark mode
+  toggleDark() {
+    const html = document.documentElement;
+    const isDark = html.dataset.theme === 'dark';
+    html.dataset.theme = isDark ? 'light' : 'dark';
+    document.getElementById('darkToggle').innerHTML = isDark ? '🌙' : '☀️';
+    localStorage.setItem('dashboard_theme', isDark ? 'light' : 'dark');
+  },
+
+  // Export / Import
+  exportDashboard() {
+    const db = State.active;
+    if (!db) return;
+    const data = JSON.stringify(db, null, 2);
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${db.name || 'dashboard'}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    Toast.show('展示板已导出');
+  },
+
+  importDashboard() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = () => {
+      const file = input.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const data = JSON.parse(reader.result);
+          if (!data.blocks || !Array.isArray(data.blocks)) throw new Error('Invalid format');
+          const db = data;
+          db.id = uid();
+          // Ensure legacy fields
+          db.blocks.forEach(b => {
+            if (b.locked === undefined) b.locked = false;
+            if (!b.borderRadius) b.borderRadius = '';
+            if (!b.shadow) b.shadow = '';
+            if (b.mdMode === undefined) b.mdMode = false;
+            if (!b.color) b.color = '';
+            if (!b.fontFamily) b.fontFamily = '';
+            if (!b.fontSize) b.fontSize = 14;
+            if (!b.z) b.z = 1;
+          });
+          if (db.allowOverlap === undefined) db.allowOverlap = true;
+          if (!db.color) db.color = '#4f6ef7';
+          State.dashboards.push(db);
+          State.activeIdx = State.dashboards.length - 1;
+          UndoRedo.push();
+          State.save();
+          Render.all();
+          Toast.show('展示板已导入');
+        } catch (err) {
+          Toast.show('导入失败：文件格式不正确', 'error');
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  },
+
+  // Mini-map
+  minimapClick(e) {
+    const canvas = document.getElementById('minimapCanvas');
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const db = State.active;
+    if (!db) return;
+
+    const maxX = Math.max(800, ...db.blocks.map(b => b.x + b.w));
+    const maxY = Math.max(600, ...db.blocks.map(b => b.y + b.h));
+    const scaleX = maxX / rect.width;
+    const scaleY = maxY / rect.height;
+
+    const clickX = (e.clientX - rect.left) * scaleX;
+    const clickY = (e.clientY - rect.top) * scaleY;
+
+    const main = $('#main');
+    if (main) {
+      main.scrollLeft = clickX - main.clientWidth / 2;
+      main.scrollTop = clickY - main.clientHeight / 2;
+    }
+  },
+
+  updateMinimap() {
+    const canvas = document.getElementById('minimapCanvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const db = State.active;
+    if (!db) { ctx.clearRect(0, 0, canvas.width, canvas.height); return; }
+
+    canvas.width = canvas.parentElement.clientWidth;
+    canvas.height = canvas.parentElement.clientHeight;
+    const maxX = Math.max(800, ...db.blocks.map(b => b.x + b.w));
+    const maxY = Math.max(600, ...db.blocks.map(b => b.y + b.h));
+    const scaleX = canvas.width / maxX;
+    const scaleY = canvas.height / maxY;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = 'rgba(79,110,247,0.3)';
+    ctx.strokeStyle = 'rgba(79,110,247,0.5)';
+    ctx.lineWidth = 1;
+
+    db.blocks.forEach(b => {
+      ctx.fillStyle = b.color || 'rgba(79,110,247,0.3)';
+      ctx.strokeStyle = b.color || 'rgba(79,110,247,0.5)';
+      ctx.fillRect(b.x * scaleX, b.y * scaleY, b.w * scaleX, b.h * scaleY);
+      ctx.strokeRect(b.x * scaleX, b.y * scaleY, b.w * scaleX, b.h * scaleY);
+    });
+  },
+
+  // ---- New Features (search, grid, presentation, connections, tags, drawing, table) ----
+
+  // Search
+  toggleSearch() { document.getElementById('searchBar').classList.toggle('visible'); document.getElementById('searchInput').focus(); },
+  doSearch() {
+    const q = document.getElementById('searchInput').value.toLowerCase();
+    const countEl = document.getElementById('searchCount');
+    if (!q) { countEl.textContent = ''; $$('.block.highlight').forEach(el => el.classList.remove('highlight')); return; }
+    let count = 0;
+    const db = State.active;
+    if (!db) return;
+    db.blocks.forEach(b => {
+      const el = document.getElementById(b.id);
+      if (!el) return;
+      const match = b.title.toLowerCase().includes(q) || (b.content && b.content.toLowerCase().includes(q));
+      if (match) { el.classList.add('highlight'); el.style.boxShadow = '0 0 0 3px #f59e0b, 0 4px 6px rgba(0,0,0,0.1)'; count++; }
+      else { el.classList.remove('highlight'); el.style.boxShadow = ''; }
+    });
+    countEl.textContent = count ? `${count} 个匹配` : '无匹配';
+    if (count === 1) {
+      const el = document.querySelector('.block.highlight');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  },
+
+  // Grid mode
+  toggleGrid() {
+    const canvas = $('#canvas');
+    canvas.classList.toggle('grid-mode');
+    State.active.gridOn = canvas.classList.contains('grid-mode');
+  },
+
+  // Presentation mode
+  _slides: [], _slideIdx: 0,
+  startPresentation() {
+    const db = State.active;
+    if (!db || db.blocks.length === 0) { Toast.show('没有可展示的方块'); return; }
+    this._slides = db.blocks.filter(b => !b.collapsed);
+    this._slideIdx = 0;
+    document.body.classList.add('presenting');
+    this._showSlide();
+    document.addEventListener('keydown', this._presentKey);
+  },
+  _showSlide() {
+    const slide = this._slides[this._slideIdx];
+    if (!slide) return;
+    const el = document.getElementById('slideContent');
+    const counter = document.getElementById('slideCounter');
+    counter.textContent = `${this._slideIdx + 1} / ${this._slides.length}`;
+    let content = `<h3>${slide.title}</h3>`;
+    if (slide.type === 'image' && slide.content) content += `<img src="${slide.content}" style="max-width:80vw;max-height:50vh;border-radius:8px;">`;
+    else if (slide.type === 'text' && slide.content) content += `<p style="white-space:pre-wrap;">${slide.content}</p>`;
+    else content += '<p style="color:#888;">（无内容）</p>';
+    el.innerHTML = content;
+  },
+  nextSlide() { this._slideIdx = Math.min(this._slideIdx + 1, this._slides.length - 1); this._showSlide(); },
+  prevSlide() { this._slideIdx = Math.max(this._slideIdx - 1, 0); this._showSlide(); },
+  stopPresentation() {
+    document.body.classList.remove('presenting');
+    document.removeEventListener('keydown', this._presentKey);
+  },
+  _presentKey(e) {
+    if (e.key === 'Escape') Dashboard.stopPresentation();
+    if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); Dashboard.nextSlide(); }
+    if (e.key === 'ArrowLeft') { e.preventDefault(); Dashboard.prevSlide(); }
+  },
+
+  // Connection lines
+  addConnection(fromId, toId) {
+    const db = State.active;
+    if (!db) return;
+    if (!db.connections) db.connections = [];
+    if (db.connections.find(c => (c.from === fromId && c.to === toId) || (c.from === toId && c.to === fromId))) {
+      Toast.show('这两个方块已经连接');
+      return;
+    }
+    db.connections.push({ from: fromId, to: toId });
+    State.save();
+    this.updateConnections();
+    Toast.show('连接已创建');
+  },
+  removeConnection(fromId, toId) {
+    const db = State.active;
+    if (!db || !db.connections) return;
+    db.connections = db.connections.filter(c => !((c.from === fromId && c.to === toId) || (c.from === toId && c.to === fromId)));
+    State.save();
+    this.updateConnections();
+  },
+  updateConnections() {
+    setTimeout(() => {
+      const svg = document.getElementById('connectionsSvg');
+      if (!svg) return;
+      const db = State.active;
+      svg.innerHTML = `<defs><marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#4f6ef7"/></marker></defs>`;
+      if (!db || !db.connections) return;
+      db.connections.forEach(c => {
+        const fromEl = document.getElementById(c.from), toEl = document.getElementById(c.to);
+        if (!fromEl || !toEl) return;
+        const canvasR = svg.parentElement.getBoundingClientRect();
+        const fromR = fromEl.getBoundingClientRect(), toR = toEl.getBoundingClientRect();
+        const x1 = fromR.left + fromR.width/2 - canvasR.left, y1 = fromR.top + fromR.height/2 - canvasR.top;
+        const x2 = toR.left + toR.width/2 - canvasR.left, y2 = toR.top + toR.height/2 - canvasR.top;
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', x1); line.setAttribute('y1', y1);
+        line.setAttribute('x2', x2); line.setAttribute('y2', y2);
+        svg.appendChild(line);
+      });
+    }, 50);
+  },
+
+  // Groups
+  createGroup(name) {
+    const db = State.active;
+    if (!db) return;
+    if (!db.groups) db.groups = [];
+    const sel = Selection.getBlocks();
+    const blockIds = sel.length > 0 ? sel.map(b => b.id) : [];
+    const gx = blockIds.length > 0 ? Math.min(...sel.map(b => b.x)) - 16 : 100;
+    const gy = blockIds.length > 0 ? Math.min(...sel.map(b => b.y)) - 30 : 100;
+    const gw = blockIds.length > 0 ? Math.max(...sel.map(b => b.x + b.w)) - gx + 16 : 200;
+    const gh = blockIds.length > 0 ? Math.max(...sel.map(b => b.y + b.h)) - gy + 16 : 150;
+    db.groups.push({
+      id: uid(), name: name || `分组 ${db.groups.length + 1}`,
+      blockIds, x: gx, y: gy, w: Math.max(gw, 200), h: Math.max(gh, 120), color: db.color || '#4f6ef7'
+    });
+    UndoRedo.push();
+    State.save();
+    this.renderGroups();
+    Toast.show(`分组「${name || '未命名'}」已创建`);
+  },
+  removeGroup(groupId) {
+    const db = State.active;
+    if (!db || !db.groups) return;
+    db.groups = db.groups.filter(g => g.id !== groupId);
+    UndoRedo.push();
+    State.save();
+    this.renderGroups();
+    Toast.show('分组已删除');
+  },
+  renameGroup(groupId) {
+    const db = State.active;
+    const g = db?.groups?.find(x => x.id === groupId);
+    if (!g) return;
+    const newName = prompt('输入分组名称：', g.name);
+    if (newName) { g.name = newName; State.save(); this.renderGroups(); }
+  },
+  renderGroups() {
+    // Remove existing group boxes
+    $$('.group-box').forEach(el => el.remove());
+    $$('.group-label').forEach(el => el.remove());
+    const db = State.active;
+    if (!db || !db.groups || db.groups.length === 0) return;
+    const canvas = $('#canvas');
+    db.groups.forEach(g => {
+      const box = document.createElement('div');
+      box.className = 'group-box';
+      box.style.cssText = `left:${g.x}px;top:${g.y}px;width:${g.w}px;height:${g.h}px;border-color:${g.color};background:${Render._hexToRgba(g.color, 0.08)};`;
+      const label = document.createElement('div');
+      label.className = 'group-label';
+      label.style.cssText = `left:${g.x + 16}px;top:${g.y - 14}px;background:${g.color};`;
+      label.textContent = g.name;
+      label.ondblclick = () => this.renameGroup(g.id);
+      label.oncontextmenu = (e) => { e.preventDefault();
+        const m = document.createElement('div'); m.className = 'context-menu'; m.style.cssText = `left:${e.clientX}px;top:${e.clientY}px;`;
+        m.innerHTML = `<button class="context-menu-item" data-a="gr">✏️ 重命名</button><button class="context-menu-item" data-a="gd" style="color:var(--danger)">🗑️ 删除</button>`;
+        document.body.appendChild(m);
+        m.onclick = (ev) => { const a = ev.target.dataset.a; m.remove(); if (a === 'gr') this.renameGroup(g.id); if (a === 'gd') this.removeGroup(g.id); };
+        setTimeout(() => document.addEventListener('click', () => m.remove(), { once: true }), 0);
+      };
+      canvas.appendChild(box);
+      canvas.appendChild(label);
+    });
+  },
+
+
+  // Tags
+  updateTags() {
+    const db = State.active;
+    if (!db) return;
+    const tagBar = $('#tagBar');
+    if (!db.tags) db.tags = [];
+    const allTags = new Set();
+    db.blocks.forEach(b => { if (b.tags) b.tags.forEach(t => allTags.add(t)); });
+    tagBar.innerHTML = [...allTags].map(t =>
+      `<span class="tag${db.activeTag === t ? ' active' : ''}" onclick="Dashboard.filterByTag('${t.replace(/'/g, "\\'")}')">${t}</span>`
+    ).join('');
+    if (allTags.size > 0) {
+      tagBar.innerHTML += `<span class="tag" onclick="Dashboard.filterByTag('')">全部</span>`;
+    }
+    tagBar.innerHTML += `<input class="tag-input" id="newTagInput" placeholder="+ 新标签" onkeydown="if(event.key==='Enter')Dashboard.addTag()">`;
+  },
+  addTag() {
+    const input = document.getElementById('newTagInput');
+    if (!input || !input.value.trim()) return;
+    const db = State.active;
+    if (!db) return;
+    if (!db.tags) db.tags = [];
+    const tag = input.value.trim();
+    if (!db.tags.includes(tag)) db.tags.push(tag);
+    db.activeTag = tag;
+    input.value = '';
+    State.save();
+    this.updateTags();
+    this.filterByTag(tag);
+  },
+  filterByTag(tag) {
+    const db = State.active;
+    if (!db) return;
+    db.activeTag = tag || '';
+    this.updateTags();
+    db.blocks.forEach(b => {
+      const el = document.getElementById(b.id);
+      if (!el) return;
+      if (!tag || (b.tags && b.tags.includes(tag))) el.style.display = '';
+      else el.style.display = 'none';
+    });
+    this.updateMinimap();
+  },
+
+  // Drawing tools
+  _drawing: false, _drawColor: '#000', _drawSize: 4,
+  toggleDrawing() {
+    this._drawing = !this._drawing;
+    document.getElementById('drawingTools').classList.toggle('visible', this._drawing);
+    if (!this._drawing) return;
+    if (!this._drawCanvas) {
+      this._drawCanvas = document.createElement('canvas');
+      this._drawCanvas.className = 'draw-canvas';
+      this._drawCanvas.width = 2000; this._drawCanvas.height = 2000;
+      $('#canvas').appendChild(this._drawCanvas);
+      this._drawCtx = this._drawCanvas.getContext('2d');
+      this._drawCanvas.addEventListener('mousedown', (e) => this._drawStart(e));
+      this._drawCanvas.addEventListener('mousemove', (e) => this._drawMove(e));
+      this._drawCanvas.addEventListener('mouseup', () => this._drawEnd());
+      this._drawCanvas.addEventListener('mouseleave', () => this._drawEnd());
+    }
+    this._drawCanvas.style.display = this._drawing ? 'block' : 'none';
+  },
+  _drawStart(e) {
+    if (!this._drawing) return;
+    this._drawIsDown = true;
+    const r = this._drawCanvas.getBoundingClientRect();
+    this._drawCtx.beginPath();
+    this._drawCtx.moveTo(e.clientX - r.left, e.clientY - r.top);
+  },
+  _drawMove(e) {
+    if (!this._drawIsDown) return;
+    const r = this._drawCanvas.getBoundingClientRect();
+    this._drawCtx.lineTo(e.clientX - r.left, e.clientY - r.top);
+    this._drawCtx.strokeStyle = this._drawColor;
+    this._drawCtx.lineWidth = this._drawSize;
+    this._drawCtx.lineCap = 'round';
+    this._drawCtx.stroke();
+  },
+  _drawEnd() { this._drawIsDown = false; },
+  setDrawColor(c) { this._drawColor = c; },
+  setDrawSize(s) {
+    this._drawSize = s;
+    $$('.drawing-tools button').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+  },
+  clearDrawing() {
+    if (this._drawCtx) this._drawCtx.clearRect(0, 0, 2000, 2000);
+  },
+
+  // Data table
+  importTable(blockId, file) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const lines = reader.result.split('\n').filter(l => l.trim());
+      if (lines.length < 2) { Toast.show('CSV 格式不正确', 'error'); return; }
+      const headers = lines[0].split(',').map(h => h.trim());
+      const rows = lines.slice(1).map(l => l.split(',').map(c => c.trim()));
+      const tableHTML = `<table class="block-table"><thead><tr>${headers.map(h => `<th onclick="Dashboard.sortTable(event,'${h}')">${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+      State.updateBlock(blockId, { type: 'table', content: JSON.stringify({ headers, rows }), title: '数据表' });
+      Render.singleBlock(State.active.blocks.find(b => b.id === blockId));
+      Toast.show('数据表已导入');
+    };
+    reader.readAsText(file);
+  },
+  sortTable(e, col) {
+    const block = State.active?.blocks.find(b => b.id === e.target.closest('.block')?.id);
+    if (!block) return;
+    const data = JSON.parse(block.content);
+    const idx = data.headers.indexOf(col);
+    data.rows.sort((a, b) => (a[idx] || '').localeCompare(b[idx] || ''));
+    block.content = JSON.stringify(data);
+    Render.singleBlock(block);
+  },
+
+  // Drop handler for file drag & drop
+  handleDrop(e, blockId) {
+    e.preventDefault();
+    const files = e.dataTransfer.files;
+    if (!files || files.length === 0) return;
+
+    const file = files[0];
+
+    if (file.type.startsWith('image/')) {
+      Dashboard.importImage(blockId, file);
+    } else if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+      Dashboard.importPDF(blockId, file);
+    } else {
+      // Try as text
+      const reader = new FileReader();
+      reader.onload = () => {
+        State.updateBlock(blockId, { type: 'text', content: reader.result });
+        Render.singleBlock(State.active.blocks.find(b => b.id === blockId));
+        Toast.show('文本文件已导入');
+      };
+      reader.readAsText(file);
+    }
+  },
+
+  // Global canvas drop - create new block from dropped file
+  handleCanvasDrop(e) {
+    e.preventDefault();
+    const files = e.dataTransfer.files;
+    if (!files || files.length === 0) return;
+
+    const file = files[0];
+    const db = State.active;
+    if (!db) return;
+
+    // Create new block at drop position
+    const canvas = $('#canvas');
+    const canvasRect = canvas.getBoundingClientRect();
+    const x = e.clientX - canvasRect.left - 150;
+    const y = e.clientY - canvasRect.top - 20;
+
+    const nextZ = Math.max(0, ...db.blocks.map(b => b.z || 0)) + 1;
+    const block = {
+      id: uid(),
+      type: 'text',
+      title: file.name,
+      x: Math.max(0, x),
+      y: Math.max(0, y),
+      w: 400,
+      h: 320,
+      collapsed: false,
+      content: '',
+      color: '',
+      fontFamily: '',
+      fontSize: 14,
+      z: nextZ,
+      locked: false,
+      borderRadius: '',
+      shadow: '',
+      mdMode: false
+    };
+    db.blocks.push(block);
+    UndoRedo.push();
+    State.save();
+    Render.blocks();
+    Render.emptyState();
+
+    // Import file into new block
+    if (file.type.startsWith('image/')) {
+      Dashboard.importImage(block.id, file);
+    } else if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+      Dashboard.importPDF(block.id, file);
+    } else {
+      const reader = new FileReader();
+      reader.onload = () => {
+        State.updateBlock(block.id, { type: 'text', content: reader.result });
+        Render.singleBlock(State.active.blocks.find(b => b.id === block.id));
+        Toast.show('文本文件已导入');
+      };
+      reader.readAsText(file);
+    }
+    Toast.show(`已导入: ${file.name}`);
+  }
+};
+
+// ---- Keyboard Shortcuts ----
+document.addEventListener('keydown', (e) => {
+  // Ctrl+Z: undo
+  if (e.ctrlKey && e.key === 'z' && !e.shiftKey) {
+    e.preventDefault();
+    if (UndoRedo.undo()) Toast.show('已撤销');
+  }
+  // Ctrl+Y or Ctrl+Shift+Z: redo
+  if ((e.ctrlKey && e.key === 'y') || (e.ctrlKey && e.shiftKey && e.key === 'Z')) {
+    e.preventDefault();
+    if (UndoRedo.redo()) Toast.show('已重做');
+  }
+  // Ctrl+N: new block
+  if (e.ctrlKey && e.key === 'n' && !e.shiftKey) {
+    e.preventDefault();
+    Dashboard.addBlock('text');
+  }
+  // Ctrl+Shift+N: new dashboard
+  if (e.ctrlKey && e.shiftKey && e.key === 'N') {
+    e.preventDefault();
+    Dashboard.addDashboard();
+  }
+  // Ctrl+D: toggle dark mode
+  if (e.ctrlKey && e.key === 'd' && !e.shiftKey) {
+    e.preventDefault();
+    Dashboard.toggleDark();
+  }
+  // Ctrl+F: search
+  if (e.ctrlKey && e.key === 'f') {
+    e.preventDefault();
+    Dashboard.toggleSearch();
+  }
+  // Arrow keys: nudge selected block(s)
+  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key) && Selection.count() > 0) {
+    e.preventDefault();
+    const step = e.shiftKey ? 10 : 1;
+    const blocks = Selection.getBlocks();
+    blocks.forEach(b => {
+      if (b.locked) return;
+      if (e.key === 'ArrowLeft') b.x -= step;
+      if (e.key === 'ArrowRight') b.x += step;
+      if (e.key === 'ArrowUp') b.y -= step;
+      if (e.key === 'ArrowDown') b.y += step;
+    });
+    UndoRedo.push();
+    State.save();
+    Render.blocks();
+    Selection.updateQuickBar();
+  }
+  // Escape: close popups and clear selection
+  if (e.key === 'Escape') {
+    closeContextMenu();
+    closeFontPopup();
+    if (Selection.count() > 0) Selection.clear();
+  }
+  // Delete: remove selected blocks
+  if (e.key === 'Delete' && Selection.count() > 0) {
+    e.preventDefault();
+    Dashboard.deleteSelected();
+  }
+});
+
+// Close context menu on outside click
+document.addEventListener('click', (e) => {
+  if (currentContextMenu && !currentContextMenu.contains(e.target)) {
+    closeContextMenu();
+  }
+});
+
+// ---- Touch Support ----
+document.addEventListener('touchstart', (e) => {
+  const header = e.target.closest('.block-header');
+  if (header && header.closest('.block')) {
+    e.preventDefault(); // Prevent mouse event synthesis
+    const blockEl = header.closest('.block');
+    const blockId = blockEl.id;
+    const touch = e.touches[0];
+    DragDrop.start({ button: 0, clientX: touch.clientX, clientY: touch.clientY, preventDefault: () => {} }, blockId);
+    const touchMove = (ev) => {
+      ev.preventDefault();
+      const t = ev.touches[0];
+      DragDrop._move({ clientX: t.clientX, clientY: t.clientY });
+    };
+    const touchEnd = (ev) => {
+      document.removeEventListener('touchmove', touchMove);
+      document.removeEventListener('touchend', touchEnd);
+      const t = ev.changedTouches[0];
+      DragDrop._end({ clientX: t.clientX, clientY: t.clientY });
+    };
+    document.addEventListener('touchmove', touchMove, { passive: false });
+    document.addEventListener('touchend', touchEnd);
+  }
+
+  const handle = e.target.closest('.resize-handle');
+  if (handle) {
+    e.preventDefault(); // Prevent mouse event synthesis
+    const blockEl = handle.closest('.block');
+    const blockId = blockEl.id;
+    const hClass = [...handle.classList].find(c => c.length <= 2 && /^[nsew]+$/.test(c));
+    const touch = e.touches[0];
+    Resize.start({ clientX: touch.clientX, clientY: touch.clientY, preventDefault: () => {}, stopPropagation: () => {} }, blockId, hClass);
+    const touchMove = (ev) => {
+      ev.preventDefault();
+      const t = ev.touches[0];
+      Resize._move({ clientX: t.clientX, clientY: t.clientY });
+    };
+    const touchEnd = () => {
+      document.removeEventListener('touchmove', touchMove);
+      document.removeEventListener('touchend', touchEnd);
+      Resize._end({});
+    };
+    document.addEventListener('touchmove', touchMove, { passive: false });
+    document.addEventListener('touchend', touchEnd);
+  }
+}, { passive: false });
+
+// ---- Init ----
+(async function bootstrap() {
+  await State.init();
+  // Restore theme
+  const savedTheme = localStorage.getItem('dashboard_theme');
+  if (savedTheme === 'dark') {
+    document.documentElement.dataset.theme = 'dark';
+    document.getElementById('darkToggle').innerHTML = '☀️';
+  }
+  // Push initial state for undo
+  UndoRedo.push();
+  Render.all();
+  // Log storage info
+  const usage = await Storage.getUsage();
+  console.log(`📦 存储: ${usage}`);
+})();
+Render.all();
+
+console.log('✅ 展示板管理器已就绪');
+console.log('  🖱️ 拖拽标题栏移动方块 | 双击标题栏重命名');
+console.log('  📐 拖拽边界调整大小 (8个方向)');
+console.log('  📑 顶部标签页管理多个展示板 | 双击标签重命名');
+console.log('  📎 拖拽文件到方块或画布直接导入');
+console.log('  🖱️ 右键方块打开上下文菜单');
+console.log('  🎨 右键方块设置颜色 | 右键标签设置展示板颜色');
+console.log('  🔤 右键文本方块设置字体和字号');
+console.log('  ⬆️⬇️ 右键方块置于顶层/底层');
+console.log('  ⊞⊟ 标签右键或顶部按钮切换方块是否允许重叠');
+console.log('  📋 右键复制方块 | Shift+点击多选 | 方向键微调');
+console.log('  🌐 添加网页嵌入 | 📋 Markdown 渲染');
+console.log('  ↩ Ctrl+Z 撤销 | Ctrl+Y 重做 | Ctrl+D 暗色 | Ctrl+F 搜索');
+console.log('  🔗 右键方块创建连接线 | 📊 导入 CSV 数据表格');
+console.log('  🎬 演示模式 | 🏷️ 标签筛选 | ✏️ 涂鸦绘图 | 📐 网格吸附');
+console.log('  💾 IndexedDB 存储 | 📤📥 导出/导入 JSON');
+</script>
+
+</body>
+</html>
